@@ -1,0 +1,288 @@
+---
+title: 'search_objects'
+description: 'Find Roblox instances by name, class type, or property values across the entire game'
+---
+
+## Overview
+
+The `search_objects` tool performs powerful searches across all instances in your Roblox game. You can search by instance name, class type (e.g., "Part", "Script"), or specific property values. This is essential for finding objects when you don't know their exact paths.
+
+## Use Cases
+
+- Find all instances with a specific name pattern
+- Locate all instances of a certain class (e.g., all Scripts or all Parts)
+- Search for objects with specific property values (e.g., all red parts)
+- Discover instances when you only remember partial information
+- Audit your game for specific types of objects
+- Build lists of instances for batch operations
+
+## Parameters
+
+<ParamField path="query" type="string" required>
+  The search query. Interpretation depends on `searchType`:
+  - For `name`: Searches instance names (supports partial matching)
+  - For `class`: Searches class types (exact match)
+  - For `property`: Searches property values (requires `propertyName`)
+</ParamField>
+
+<ParamField path="searchType" type="string" default="name">
+  The type of search to perform:
+  - `name` - Search by instance name (default)
+  - `class` - Search by class type
+  - `property` - Search by property value
+</ParamField>
+
+<ParamField path="propertyName" type="string" optional>
+  Required when `searchType` is `"property"`. Specifies which property to search.
+  
+  Examples: `"Transparency"`, `"BrickColor"`, `"Anchored"`, `"CFrame"`
+</ParamField>
+
+### Example Inputs
+
+```json
+// Search by name
+{
+  "query": "Platform",
+  "searchType": "name"
+}
+
+// Search by class
+{
+  "query": "Script",
+  "searchType": "class"
+}
+
+// Search by property
+{
+  "query": "true",
+  "searchType": "property",
+  "propertyName": "Anchored"
+}
+```
+
+## Response Structure
+
+<ResponseField name="results" type="array">
+  Array of matching instances
+</ResponseField>
+
+<ResponseField name="results[].path" type="string">
+  Full instance path in dot notation (e.g., "game.Workspace.Level_01.Platform_1")
+</ResponseField>
+
+<ResponseField name="results[].name" type="string">
+  The name of the instance
+</ResponseField>
+
+<ResponseField name="results[].className" type="string">
+  The Roblox class type of the instance
+</ResponseField>
+
+<ResponseField name="results[].parent" type="string">
+  Path to the parent instance
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "results": [
+    {
+      "path": "game.Workspace.Level_01.Platform_1",
+      "name": "Platform_1",
+      "className": "Part",
+      "parent": "game.Workspace.Level_01"
+    },
+    {
+      "path": "game.Workspace.Level_02.Platform_1",
+      "name": "Platform_1",
+      "className": "Part",
+      "parent": "game.Workspace.Level_02"
+    }
+  ]
+}
+```
+
+## Usage Examples
+
+### Search by Name
+
+```javascript
+// Find all platforms in the game
+const result = await mcpClient.callTool('search_objects', {
+  query: 'Platform',
+  searchType: 'name'
+});
+
+console.log(`Found ${result.results.length} platforms`);
+
+result.results.forEach(obj => {
+  console.log(`  ${obj.path}`);
+});
+```
+
+### Search by Class Type
+
+```javascript
+// Find all scripts in the game
+const result = await mcpClient.callTool('search_objects', {
+  query: 'Script',
+  searchType: 'class'
+});
+
+console.log(`Total scripts in game: ${result.results.length}`);
+
+// Separate by type
+const serverScripts = result.results.filter(s => s.className === 'Script');
+const localScripts = result.results.filter(s => s.className === 'LocalScript');
+const moduleScripts = result.results.filter(s => s.className === 'ModuleScript');
+
+console.log(`Server: ${serverScripts.length}, Local: ${localScripts.length}, Module: ${moduleScripts.length}`);
+```
+
+### Search by Property Value
+
+```javascript
+// Find all unanchored parts (potential physics issues)
+const result = await mcpClient.callTool('search_objects', {
+  query: 'false',
+  searchType: 'property',
+  propertyName: 'Anchored'
+});
+
+console.log(`Found ${result.results.length} unanchored parts`);
+
+if (result.results.length > 0) {
+  console.log('Consider anchoring these objects:');
+  result.results.forEach(obj => {
+    console.log(`  - ${obj.name} at ${obj.parent}`);
+  });
+}
+```
+
+### Batch Operations After Search
+
+```javascript
+// Find all platforms and change their color
+const platforms = await mcpClient.callTool('search_objects', {
+  query: 'Platform',
+  searchType: 'name'
+});
+
+// Extract paths for batch operation
+const paths = platforms.results.map(p => p.path);
+
+// Set color on all platforms
+await mcpClient.callTool('mass_set_property', {
+  paths: paths,
+  propertyName: 'BrickColor',
+  propertyValue: 'Really red'
+});
+
+console.log(`Changed color of ${paths.length} platforms`);
+```
+
+### Advanced Filtering
+
+```javascript
+// Find all KillBricks (name search) and verify they're red
+const killBricks = await mcpClient.callTool('search_objects', {
+  query: 'KillBrick',
+  searchType: 'name'
+});
+
+console.log(`Found ${killBricks.results.length} kill bricks`);
+
+// Check each one's color property
+for (const kb of killBricks.results) {
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: kb.path
+  });
+  
+  if (props.BrickColor !== 'Really red') {
+    console.log(`WARNING: ${kb.name} is not red!`);
+  }
+}
+```
+
+### Organize Search Results
+
+```javascript
+// Search for all parts and group by parent
+const parts = await mcpClient.callTool('search_objects', {
+  query: 'Part',
+  searchType: 'class'
+});
+
+const byLevel = {};
+
+parts.results.forEach(part => {
+  const parentName = part.parent.split('.').pop();
+  if (!byLevel[parentName]) {
+    byLevel[parentName] = [];
+  }
+  byLevel[parentName].push(part);
+});
+
+console.log('Parts by level:');
+Object.keys(byLevel).forEach(level => {
+  console.log(`  ${level}: ${byLevel[level].length} parts`);
+});
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use `searchType: "class"` to audit specific object types in your game. This is useful for finding all scripts, models, or parts before performing batch operations.
+</Tip>
+
+<Tip>
+  Combine `search_objects` with [`get_instance_properties`](/api/instance/get-instance-properties) to verify or filter results based on additional criteria.
+</Tip>
+
+<Warning>
+  Searching the entire game can be slow for very large places with thousands of instances. If you know the approximate location, use more targeted tools like [`get_descendants`](/api/instance/get-descendants) with a specific starting path.
+</Warning>
+
+<Info>
+  Name searches are case-sensitive and support partial matching. Searching for "Platform" will match "Platform_1", "PlatformStart", and "BigPlatform".
+</Info>
+
+<Warning>
+  When using `searchType: "property"`, the query must match the property value as a string. For boolean properties, use `"true"` or `"false"` (as strings).
+</Warning>
+
+## Performance Considerations
+
+**Large Games**
+- Searching thousands of instances can take several seconds
+- Consider using more specific searches (class type is faster than property search)
+- Cache search results if you need to reference them multiple times
+
+**Property Searches**
+- Property searches are the slowest because they must read properties from each instance
+- Use [`search_by_property`](/api/property/search-by-property) if you need more advanced property matching
+
+## Common Issues
+
+**Issue: Too many results**
+- Refine your query to be more specific
+- Use class type search to narrow down object types
+- Filter results in your code after receiving them
+
+**Issue: No results found**
+- Verify the search query matches actual instance names/classes
+- Check that `searchType` is correct for your query
+- For property searches, ensure `propertyName` is spelled correctly
+
+**Issue: Property search returns unexpected results**
+- Property values are compared as strings; ensure your query matches the string representation
+- Some properties might be serialized differently than expected (e.g., Vector3, Color3)
+
+## Related Tools
+
+- [`search_by_property`](/api/property/search-by-property) - More advanced property searching with exact value matching
+- [`get_descendants`](/api/instance/get-descendants) - Get all descendants from a specific starting point with filters
+- [`search_files`](/api/hierarchy/search-files) - Search for instances by name, type, or script content (similar functionality)
+- [`get_tagged`](/api/tags/get-tagged) - Find instances by CollectionService tag

@@ -1,0 +1,148 @@
+---
+title: 'mass_duplicate'
+description: 'Perform multiple smart duplications at once'
+---
+
+## Description
+
+Performs multiple smart duplication operations in a single batch. This tool allows you to duplicate several different objects simultaneously, each with their own duplication count and options.
+
+## Parameters
+
+<ParamField path="duplications" type="array" required>
+  Array of duplication operations to perform. Each operation follows the same schema as [smart_duplicate](/api/object-creation/smart-duplicate).
+  
+  <Expandable title="Duplication Operation Schema">
+    <ParamField path="instancePath" type="string" required>
+      Path to the instance to duplicate
+    </ParamField>
+    
+    <ParamField path="count" type="number" required>
+      Number of duplicates to create
+    </ParamField>
+    
+    <ParamField path="options" type="object">
+      Optional configuration (same as smart_duplicate options)
+      
+      <Expandable title="Options">
+        <ParamField path="namePattern" type="string">
+          Name pattern with `{n}` placeholder
+        </ParamField>
+        
+        <ParamField path="positionOffset" type="array">
+          X, Y, Z offset per duplicate
+        </ParamField>
+        
+        <ParamField path="rotationOffset" type="array">
+          X, Y, Z rotation offset per duplicate
+        </ParamField>
+        
+        <ParamField path="scaleOffset" type="array">
+          X, Y, Z scale multiplier per duplicate
+        </ParamField>
+        
+        <ParamField path="propertyVariations" type="object">
+          Property name to array of values
+        </ParamField>
+        
+        <ParamField path="targetParents" type="array">
+          Different parent for each duplicate
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Example
+
+```json
+{
+  "duplications": [
+    {
+      "instancePath": "game.Workspace.Obby.Level_01.Platform_01",
+      "count": 5,
+      "options": {
+        "namePattern": "Platform_{n}",
+        "positionOffset": [0, 0, -15],
+        "propertyVariations": {
+          "BrickColor": ["Bright red", "Bright blue"]
+        }
+      }
+    },
+    {
+      "instancePath": "game.Workspace.Obby.Level_01.KillBrick_01",
+      "count": 3,
+      "options": {
+        "namePattern": "KillBrick_{n}",
+        "positionOffset": [0, 0, -20]
+      }
+    },
+    {
+      "instancePath": "game.Workspace.Templates.Checkpoint",
+      "count": 4,
+      "options": {
+        "namePattern": "Checkpoint{n}",
+        "targetParents": [
+          "game.Workspace.Obby.Level_01",
+          "game.Workspace.Obby.Level_02",
+          "game.Workspace.Obby.Level_03",
+          "game.Workspace.Obby.Level_04"
+        ]
+      }
+    }
+  ]
+}
+```
+
+## Use Cases
+
+- Building multiple level sections simultaneously
+- Creating parallel obstacle courses
+- Duplicating different object types across multiple levels
+- Batch creating game elements with different configurations
+- Automating complex level generation workflows
+- Creating multiple patterns at once (platforms, obstacles, decorations)
+
+## Performance Notes
+
+This tool is optimized for batch operations. Using `mass_duplicate` to perform 10 duplication operations is significantly faster than making 10 separate `smart_duplicate` calls.
+
+## Example Use Case: Building Multiple Levels
+
+Create platforms, obstacles, and checkpoints for 3 levels simultaneously:
+
+```json
+{
+  "duplications": [
+    {
+      "instancePath": "game.Workspace.Templates.MainPlatform",
+      "count": 10,
+      "options": {
+        "namePattern": "Platform{n}",
+        "positionOffset": [0, 0, -15]
+      }
+    },
+    {
+      "instancePath": "game.Workspace.Templates.MovingObstacle",
+      "count": 5,
+      "options": {
+        "namePattern": "Obstacle{n}",
+        "positionOffset": [0, 0, -30]
+      }
+    },
+    {
+      "instancePath": "game.Workspace.Templates.Checkpoint",
+      "count": 3,
+      "options": {
+        "namePattern": "CP{n}",
+        "positionOffset": [0, 0, -50]
+      }
+    }
+  ]
+}
+```
+
+## Related Tools
+
+- [smart_duplicate](/api/object-creation/smart-duplicate) - Perform a single smart duplication
+- [mass_create_objects_with_properties](/api/object-creation/mass-create-objects-with-properties) - Create multiple new objects

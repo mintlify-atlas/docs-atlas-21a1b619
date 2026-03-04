@@ -1,0 +1,402 @@
+---
+title: 'delete_script_lines'
+description: 'Delete specific line ranges from Roblox scripts'
+icon: 'trash'
+---
+
+## Overview
+
+Delete specific lines from a Roblox script without rewriting the entire source. Ideal for removing deprecated code, debug statements, or unused functions.
+
+<Warning>
+Deletion is permanent and cannot be undone via MCP (use Roblox Studio's Undo if needed). Always verify line numbers before deleting.
+</Warning>
+
+<Info>
+**Line numbers are 1-indexed** and ranges are **inclusive**. Always use the `numberedSource` field from `get_script_source` to identify correct line numbers.
+</Info>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path to the script using dot notation
+  
+  **Examples:**
+  - `game.ServerScriptService.MainScript`
+  - `game.StarterPlayer.StarterPlayerScripts.LocalScript`
+  - `game.ReplicatedStorage.Modules.DataManager`
+</ParamField>
+
+<ParamField path="startLine" type="number" required>
+  First line to delete (1-indexed)
+  
+  **Get from `numberedSource` field of `get_script_source`**
+</ParamField>
+
+<ParamField path="endLine" type="number" required>
+  Last line to delete (inclusive)
+  
+  **Get from `numberedSource` field of `get_script_source`**
+</ParamField>
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "Lines 45-47 deleted successfully",
+  "linesDeleted": 3,
+  "totalLines": 153
+}
+```
+
+<ResponseField name="success" type="boolean">
+  Whether the operation completed successfully
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Status message describing the operation
+</ResponseField>
+
+<ResponseField name="linesDeleted" type="number">
+  Number of lines removed (endLine - startLine + 1)
+</ResponseField>
+
+<ResponseField name="totalLines" type="number">
+  Total lines remaining in script after deletion
+</ResponseField>
+
+## Usage Examples
+
+### Delete Single Line
+
+**Before:**
+```lua
+10: local Players = game:GetService('Players')
+11: print('Debug: Script loaded')  -- Delete this debug line
+12: local ReplicatedStorage = game:GetService('ReplicatedStorage')
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.MainScript",
+  "startLine": 11,
+  "endLine": 11
+}
+```
+
+**After:**
+```lua
+10: local Players = game:GetService('Players')
+11: local ReplicatedStorage = game:GetService('ReplicatedStorage')
+```
+
+### Delete Entire Function
+
+**Before:**
+```lua
+20: local function oldFunction()
+21:     print('Deprecated')
+22:     return false
+23: end
+24: 
+25: local function newFunction()
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.Utils",
+  "startLine": 20,
+  "endLine": 24
+}
+```
+
+**After:**
+```lua
+20: local function newFunction()
+```
+
+### Delete Multiple Debug Statements
+
+**Before:**
+```lua
+50: local function processData(data)
+51:     print('DEBUG: Input data:', data)
+52:     warn('DEBUG: Type:', typeof(data))
+53:     print('DEBUG: Length:', #data)
+54:     
+55:     local result = transformData(data)
+56:     return result
+57: end
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.DataProcessor",
+  "startLine": 51,
+  "endLine": 53
+}
+```
+
+**After:**
+```lua
+50: local function processData(data)
+51:     
+52:     local result = transformData(data)
+53:     return result
+54: end
+```
+
+### Delete Comment Block
+
+**Before:**
+```lua
+1: --[[
+2:     Old documentation
+3:     No longer relevant
+4:     TODO: Update this
+5: ]]
+6: 
+7: local Module = {}
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ReplicatedStorage.OldModule",
+  "startLine": 1,
+  "endLine": 6
+}
+```
+
+**After:**
+```lua
+1: local Module = {}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Read Before Deleting">
+    **Step 1:** Call `get_script_source` to see current content
+    ```json
+    {"instancePath": "game.ServerScriptService.Script"}
+    ```
+    
+    **Step 2:** Identify lines to delete from `numberedSource`:
+    ```
+    15: print('Debug line 1')
+    16: print('Debug line 2')
+    17: print('Debug line 3')
+    18: 
+    19: -- Rest of code
+    ```
+    
+    **Step 3:** Delete using exact line numbers:
+    ```json
+    {
+      "instancePath": "game.ServerScriptService.Script",
+      "startLine": 15,
+      "endLine": 17
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Line Range is Inclusive">
+    `startLine` to `endLine` includes both endpoints:
+    
+    - `startLine: 5, endLine: 5` → deletes line 5 only
+    - `startLine: 5, endLine: 7` → deletes lines 5, 6, and 7 (3 lines total)
+    - `startLine: 10, endLine: 20` → deletes 11 lines total
+  </Accordion>
+
+  <Accordion title="Consider Surrounding Context">
+    Be careful when deleting lines that might affect surrounding code:
+    
+    ```lua
+    -- Don't delete line 15 only - it would break the function:
+    14: local function example()
+    15:     local value = 10
+    16:     return value
+    17: end
+    ```
+    
+    Instead, delete the entire function (lines 14-17) or none at all.
+  </Accordion>
+
+  <Accordion title="Delete Blank Lines for Cleanup">
+    Remove extra spacing for cleaner code:
+    
+    ```json Remove double blank lines
+    {
+      "startLine": 20,
+      "endLine": 21,
+      "comment": "Deletes two blank lines, leaving one"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Syntax After Deletion">
+    After deleting lines, verify the script is still valid:
+    
+    ```lua
+    -- Use execute_lua tool:
+    local script = game.ServerScriptService.MainScript
+    local source = script.Source
+    local fn, err = loadstring(source)
+    return err or "Syntax OK"
+    ```
+  </Accordion>
+
+  <Accordion title="Deletion Cannot Be Undone via MCP">
+    Once lines are deleted through MCP, you cannot undo via MCP tools. However:
+    - Roblox Studio's built-in Undo (Ctrl+Z) may still work
+    - Consider reading and backing up the source before major deletions
+    - For testing, use a copy of the script first
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Remove All Debug Print Statements
+
+```json Step 1: Find debug lines
+{
+  "name": "get_script_source",
+  "arguments": {"instancePath": "game.ServerScriptService.Main"}
+}
+```
+
+```json Step 2: Delete each debug line
+{"startLine": 15, "endLine": 15}  // print('Debug 1')
+{"startLine": 23, "endLine": 23}  // print('Debug 2')
+{"startLine": 45, "endLine": 45}  // print('Debug 3')
+```
+
+### Remove Deprecated Function
+
+```json Delete old function and its comments
+{
+  "instancePath": "game.ServerScriptService.Utils",
+  "startLine": 30,
+  "endLine": 42,
+  "comment": "Removes function definition, body, and surrounding blank lines"
+}
+```
+
+### Clean Up Old Comments
+
+```json Remove outdated TODO comments
+{
+  "instancePath": "game.ServerScriptService.GameManager",
+  "startLine": 10,
+  "endLine": 13
+}
+```
+
+### Remove Entire Code Block
+
+```json Delete conditional block no longer needed
+{
+  "instancePath": "game.ServerScriptService.FeatureFlags",
+  "startLine": 50,
+  "endLine": 67,
+  "comment": "Removes if-statement and all its contents"
+}
+```
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="get_script_source" icon="file-code" href="/api/script-editing/get-script-source">
+    Read script with line numbers
+  </Card>
+  <Card title="set_script_source" icon="arrows-rotate" href="/api/script-editing/set-script-source">
+    Replace entire script
+  </Card>
+  <Card title="edit_script_lines" icon="pen-to-square" href="/api/script-editing/edit-script-lines">
+    Replace specific line ranges
+  </Card>
+  <Card title="insert_script_lines" icon="plus" href="/api/script-editing/insert-script-lines">
+    Insert new lines
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+<ResponseExample>
+```json Error: Invalid Line Range
+{
+  "error": "Invalid line range: startLine must be <= endLine",
+  "startLine": 50,
+  "endLine": 40
+}
+```
+
+```json Error: Line Out of Bounds
+{
+  "error": "Line range out of bounds",
+  "startLine": 100,
+  "endLine": 105,
+  "totalLines": 95
+}
+```
+
+```json Error: Script Not Found
+{
+  "error": "Instance not found or is not a script",
+  "instancePath": "game.ServerScriptService.NonExistent"
+}
+```
+</ResponseExample>
+
+## Complete Workflow Example
+
+```json Step 1: Read current source
+{
+  "name": "get_script_source",
+  "arguments": {
+    "instancePath": "game.ServerScriptService.Cleanup"
+  }
+}
+```
+
+```text Step 2: Identify lines to remove
+10: -- Old implementation
+11: local function oldMethod()
+12:     print('Deprecated')
+13:     return nil
+14: end
+15: 
+16: -- New implementation
+17: local function newMethod()
+```
+
+```json Step 3: Delete old function
+{
+  "name": "delete_script_lines",
+  "arguments": {
+    "instancePath": "game.ServerScriptService.Cleanup",
+    "startLine": 10,
+    "endLine": 15
+  }
+}
+```
+
+```lua Step 4: Result
+10: -- New implementation
+11: local function newMethod()
+```
+
+## Safety Checklist
+
+Before deleting lines, verify:
+
+- [ ] Read the script and confirmed line numbers from `numberedSource`
+- [ ] Identified the correct `startLine` and `endLine`
+- [ ] Checked that deletion won't break surrounding code
+- [ ] Considered whether to also delete blank lines above/below
+- [ ] Have a way to recover if needed (Studio Undo, version control, backup)

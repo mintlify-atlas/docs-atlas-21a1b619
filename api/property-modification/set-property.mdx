@@ -1,0 +1,110 @@
+---
+title: 'set_property'
+description: 'Set a property on any Roblox instance'
+---
+
+## Overview
+
+The `set_property` tool allows you to modify any property of a Roblox instance in Studio. This is the fundamental tool for changing instance properties like Position, Color, Transparency, Size, and more.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the instance using dot notation (e.g., `game.Workspace.Part`)
+</ParamField>
+
+<ParamField path="propertyName" type="string" required>
+  Name of the property to set (e.g., `Position`, `BrickColor`, `Transparency`)
+</ParamField>
+
+<ParamField path="propertyValue" type="any" required>
+  Value to set the property to. Type must match the property's expected type.
+</ParamField>
+
+## Vector3 Handling
+
+When setting Vector3 properties (Position, Size, Velocity, etc.), use the object format:
+
+```json
+{"X": 10, "Y": 5, "Z": -20}
+```
+
+**Do NOT use string format** like `"10, 5, -20"` - this will cause errors.
+
+## Data Type Warning
+
+<Warning>
+  Property values must match the expected data type:
+  - **Numbers**: Use plain numbers (e.g., `5`, `0.5`, `-10`)
+  - **Booleans**: Use `true` or `false` (not strings)
+  - **Strings**: Use quoted strings (e.g., `"Red"`, `"MyPart"`)
+  - **Vector3**: Use object format `{"X": n, "Y": n, "Z": n}`
+  - **Color3**: Use object format `{"R": 0-1, "G": 0-1, "B": 0-1}`
+  - **BrickColor**: Use string with BrickColor name (e.g., `"Bright red"`)
+</Warning>
+
+## Examples
+
+### Setting a simple property
+
+```json
+{
+  "instancePath": "game.Workspace.Part",
+  "propertyName": "Transparency",
+  "propertyValue": 0.5
+}
+```
+
+### Setting a Vector3 position
+
+```json
+{
+  "instancePath": "game.Workspace.SpawnLocation",
+  "propertyName": "Position",
+  "propertyValue": {"X": 0, "Y": 5, "Z": -80}
+}
+```
+
+### Setting a Color3 property
+
+```json
+{
+  "instancePath": "game.Workspace.Part",
+  "propertyName": "Color",
+  "propertyValue": {"R": 1, "G": 0, "B": 0}
+}
+```
+
+### Setting a BrickColor
+
+```json
+{
+  "instancePath": "game.Workspace.Part",
+  "propertyName": "BrickColor",
+  "propertyValue": "Bright blue"
+}
+```
+
+### Setting a boolean property
+
+```json
+{
+  "instancePath": "game.Workspace.Part",
+  "propertyName": "Anchored",
+  "propertyValue": true
+}
+```
+
+## Use Cases
+
+- Adjusting positions and sizes of parts
+- Changing visual properties (color, transparency, material)
+- Modifying physics properties (anchored, mass, friction)
+- Setting GUI properties (text, size, position)
+- Updating script properties
+
+## Related Tools
+
+- [mass_set_property](/api/property-modification/mass-set-property) - Set the same property on multiple instances
+- [set_relative_property](/api/property-modification/set-relative-property) - Modify properties relative to current values
+- [set_calculated_property](/api/property-modification/set-calculated-property) - Set properties using formulas

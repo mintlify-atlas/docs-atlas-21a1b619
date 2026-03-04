@@ -1,0 +1,823 @@
+---
+title: 'Plugin System'
+description: 'Learn how the Studio plugin polls, executes Roblox APIs, and provides activity logging'
+icon: 'plug'
+---
+
+## Overview
+
+The **Studio Plugin** is the critical component that runs inside Roblox Studio, providing direct access to Studio APIs that external applications cannot reach. Written in Luau, it implements long-polling, request processing, and comprehensive activity logging.
+
+<Info>
+  The plugin is the only component with direct access to Roblox Studio APIs like `game`, `workspace`, `Selection`, `HttpService`, etc.
+</Info>
+
+## Plugin Architecture
+
+### Core Services
+
+The plugin leverages these Roblox services:
+
+```lua
+local HttpService = game:GetService("HttpService")
+local StudioService = game:GetService("StudioService")
+local Selection = game:GetService("Selection")
+local RunService = game:GetService("RunService")
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local ScriptEditorService = game:GetService("ScriptEditorService")
+local CollectionService = game:GetService("CollectionService")
+```
+
+**Service Usage**:
+- **HttpService**: HTTP requests to bridge (requires "Allow HTTP Requests" enabled)
+- **Selection**: Get/set selected objects in Studio
+- **ChangeHistoryService**: Undo/redo functionality
+- **ScriptEditorService**: Advanced script editing operations
+- **CollectionService**: Tag management (get/add/remove tags)
+
+### Plugin State Management
+
+```lua
+local pluginState = {
+  serverUrl = "http://localhost:3002",
+  mcpServerUrl = "http://localhost:3001",
+  isActive = false,
+  
+  -- Connection tracking
+  consecutiveFailures = 0,
+  lastSuccessfulConnection = 0,
+  lastHttpOk = false,
+  mcpWaitStartTime = nil,
+  
+  -- Retry configuration
+  currentRetryDelay = 0.5,
+  maxRetryDelay = 5,
+  retryBackoffMultiplier = 1.2,
+  maxFailuresBeforeError = 50,
+  
+  -- Long-poll coroutine
+  pollThread = nil
+}
+```
+
+## Long-Polling Implementation
+
+The plugin implements sophisticated long-polling with error recovery:
+
+### Main Polling Loop
+
+```lua
+local function longPollLoop()
+  while pluginState.isActive do
+    local success, result = pcall(function()
+      return HttpService:RequestAsync({
+        Url = pluginState.serverUrl .. "/poll",
+        Method = "GET",
+        Headers = {
+          ["Content-Type"] = "application/json"
+        }
+      })
+    end)
+    
+    if not pluginState.isActive then break end
+    
+    if success and (result.Success or result.StatusCode == 503) then
+      -- Success path
+      pluginState.consecutiveFailures = 0
+      pluginState.currentRetryDelay = 0.5
+      pluginState.lastSuccessfulConnection = tick()
+      
+      local data = HttpService:JSONDecode(result.Body)
+      local mcpConnected = data.mcpConnected == true
+      
+      -- Update connection status
+      pluginState.lastHttpOk = true
+      updateStatusIndicators(true, mcpConnected)
+      
+      if data.request and mcpConnected then
+        -- Process the request
+        addLog("REQUEST", "Received: " .. data.request.endpoint)
+        local reqStartTime = tick()
+        
+        local response = processRequest(data.request)
+        sendResponse(data.requestId, response)
+        
+        local reqMs = math.floor((tick() - reqStartTime) * 1000)
+        addLog("RESPONSE", data.request.endpoint .. " completed in " .. reqMs .. "ms")
+      end
+      
+      -- If no request, immediately re-poll (long-poll timeout)
+      
+    elseif pluginState.isActive then
+      -- Failure path
+      pluginState.consecutiveFailures += 1
+      
+      if pluginState.consecutiveFailures > 1 then
+        pluginState.currentRetryDelay = math.min(
+          pluginState.currentRetryDelay * pluginState.retryBackoffMultiplier,
+          pluginState.maxRetryDelay
+        )
+      end
+      
+      updateStatusIndicators(false, false)
+      
+      -- Exponential backoff
+      task.wait(pluginState.currentRetryDelay)
+    end
+  end
+end
+```
+
+**Key Features**:
+- **Infinite loop** while active (no sleep between successful polls)
+- **Immediate re-poll** after receiving response (enables instant subsequent requests)
+- **Error handling** with pcall prevents crashes
+- **Connection status tracking** with multiple indicators
+- **Performance logging** tracks request duration
+
+### Response Submission
+
+```lua
+local function sendResponse(requestId, responseData)
+  local ok, err = pcall(function()
+    HttpService:RequestAsync({
+      Url = pluginState.serverUrl .. "/response",
+      Method = "POST",
+      Headers = {
+        ["Content-Type"] = "application/json"
+      },
+      Body = HttpService:JSONEncode({
+        requestId = requestId,
+        response = responseData
+      })
+    })
+  end)
+  
+  if not ok then
+    addLog("ERROR", "Failed to send response: " .. tostring(err))
+  end
+end
+```
+
+## Request Processing
+
+The plugin routes requests to specific handlers:
+
+### Request Router
+
+```lua
+local function processRequest(request)
+  local endpoint = request.endpoint
+  local data = request.data or {}
+  
+  -- File system tools
+  if endpoint == "/api/file-tree" then
+    return handlers.getFileTree(data)
+  elseif endpoint == "/api/search-files" then
+    return handlers.searchFiles(data)
+    
+  -- Instance tools
+  elseif endpoint == "/api/instance-properties" then
+    return handlers.getInstanceProperties(data)
+  elseif endpoint == "/api/instance-children" then
+    return handlers.getInstanceChildren(data)
+    
+  -- Property tools
+  elseif endpoint == "/api/set-property" then
+    return handlers.setProperty(data)
+  elseif endpoint == "/api/mass-set-property" then
+    return handlers.massSetProperty(data)
+    
+  -- Script tools
+  elseif endpoint == "/api/get-script-source" then
+    return handlers.getScriptSource(data)
+  elseif endpoint == "/api/set-script-source" then
+    return handlers.setScriptSource(data)
+  elseif endpoint == "/api/edit-script-lines" then
+    return handlers.editScriptLines(data)
+    
+  -- Attribute tools
+  elseif endpoint == "/api/get-attribute" then
+    return handlers.getAttribute(data)
+  elseif endpoint == "/api/set-attribute" then
+    return handlers.setAttribute(data)
+    
+  -- Tag tools
+  elseif endpoint == "/api/get-tags" then
+    return handlers.getTags(data)
+  elseif endpoint == "/api/add-tag" then
+    return handlers.addTag(data)
+    
+  -- ... 37+ total endpoints
+  else
+    addLog("WARN", "Unknown endpoint: " .. endpoint)
+    return { error = "Unknown endpoint: " .. endpoint }
+  end
+end
+```
+
+### Example Handler: Get File Tree
+
+```lua
+handlers.getFileTree = function(requestData)
+  local path = requestData.path or ""
+  local startInstance = getInstanceByPath(path)
+  
+  if not startInstance then
+    return { error = "Path not found: " .. path }
+  end
+  
+  local function buildTree(instance, depth)
+    if depth > 10 then
+      return {
+        name = instance.Name,
+        className = instance.ClassName,
+        children = {}
+      }
+    end
+    
+    local node = {
+      name = instance.Name,
+      className = instance.ClassName,
+      path = getInstancePath(instance),
+      children = {}
+    }
+    
+    if instance:IsA("LuaSourceContainer") then
+      node.hasSource = true
+      node.scriptType = instance.ClassName
+    end
+    
+    for _, child in ipairs(instance:GetChildren()) do
+      table.insert(node.children, buildTree(child, depth + 1))
+    end
+    
+    return node
+  end
+  
+  return {
+    tree = buildTree(startInstance, 0),
+    timestamp = tick()
+  }
+end
+```
+
+### Property Conversion
+
+The plugin handles JSON to Roblox type conversion:
+
+```lua
+local function convertPropertyValue(instance, propertyName, propertyValue)
+  -- Vector3 from object notation {X: n, Y: n, Z: n}
+  if type(propertyValue) == "table" and (propertyValue.X or propertyValue.Y or propertyValue.Z) then
+    return Vector3.new(
+      propertyValue.X or 0,
+      propertyValue.Y or 0,
+      propertyValue.Z or 0
+    )
+  end
+  
+  -- Color3 from object notation {R: n, G: n, B: n}
+  if type(propertyValue) == "table" and (propertyValue.R or propertyValue.G or propertyValue.B) then
+    return Color3.new(
+      propertyValue.R or 0,
+      propertyValue.G or 0,
+      propertyValue.B or 0
+    )
+  end
+  
+  -- Enum values (strings like "Ball", "Cylinder")
+  if type(propertyValue) == "string" then
+    local success, currentVal = pcall(function() return instance[propertyName] end)
+    
+    if success and typeof(currentVal) == "EnumItem" then
+      local enumType = tostring(currentVal.EnumType)
+      local enumSuccess, enumVal = pcall(function()
+        return Enum[enumType][propertyValue]
+      end)
+      
+      if enumSuccess and enumVal then
+        return enumVal
+      end
+    end
+    
+    -- BrickColor
+    if propertyName == "BrickColor" then
+      return BrickColor.new(propertyValue)
+    end
+  end
+  
+  -- Boolean strings
+  if propertyValue == "true" then return true end
+  if propertyValue == "false" then return false end
+  
+  -- Return as-is for primitives
+  return propertyValue
+end
+```
+
+## Activity Logging System
+
+The plugin features a comprehensive activity logger with UI:
+
+### Log Categories
+
+```lua
+local LOG_CATEGORIES = {
+  CONNECTION = { color = Color3.fromRGB(59, 130, 246),  label = "CONN" },
+  POLL       = { color = Color3.fromRGB(107, 114, 128), label = "POLL" },
+  REQUEST    = { color = Color3.fromRGB(6, 182, 212),   label = "REQ"  },
+  RESPONSE   = { color = Color3.fromRGB(34, 197, 94),   label = "RESP" },
+  ERROR      = { color = Color3.fromRGB(239, 68, 68),   label = "ERR"  },
+  WARN       = { color = Color3.fromRGB(245, 158, 11),  label = "WARN" }
+}
+```
+
+### Log Entry Creation
+
+```lua
+local function addLog(category, message)
+  -- Throttle POLL logs (only every 10th)
+  if category == "POLL" then
+    logState.pollCounter += 1
+    if logState.pollCounter % 10 ~= 1 then return end
+  end
+  
+  local catInfo = LOG_CATEGORIES[category]
+  if not catInfo then return end
+  
+  local timestamp = os.date("%H:%M:%S")
+  logState.entryCount += 1
+  
+  local entry = Instance.new("TextLabel")
+  entry.Size = UDim2.new(1, 0, 0, 14)
+  entry.BackgroundTransparency = 1
+  entry.Text = "[" .. timestamp .. "] [" .. catInfo.label .. "] " .. message
+  entry.TextColor3 = catInfo.color
+  entry.TextSize = 10
+  entry.Font = Enum.Font.RobotoMono
+  entry.TextXAlignment = Enum.TextXAlignment.Left
+  entry.LayoutOrder = logState.entryCount
+  entry.Parent = logScrollFrame
+  
+  table.insert(logState.entries, {
+    timestamp = timestamp,
+    category = category,
+    message = message,
+    frame = entry
+  })
+  
+  -- Auto-scroll to bottom
+  task.defer(function()
+    if logScrollFrame and logScrollFrame.Parent then
+      logScrollFrame.CanvasPosition = Vector2.new(
+        0,
+        math.max(0, logScrollFrame.AbsoluteCanvasSize.Y - logScrollFrame.AbsoluteSize.Y)
+      )
+    end
+  end)
+end
+```
+
+### Log Export Features
+
+The plugin provides three log management buttons:
+
+<CardGroup cols={3}>
+  <Card title="Clear" icon="x">
+    **Button**: Red X
+    
+    **Action**: Clears all log entries and resets counter
+  </Card>
+  
+  <Card title="Copy" icon="copy">
+    **Button**: Gray C
+    
+    **Action**: Prints all logs to Output window for copy/paste
+  </Card>
+  
+  <Card title="Export" icon="download">
+    **Button**: Gray E
+    
+    **Action**: Creates `StringValue` in ServerStorage with full log
+  </Card>
+</CardGroup>
+
+**Copy to Output**:
+```lua
+copyButton.Activated:Connect(function()
+  local lines = {}
+  for _, e in ipairs(logState.entries) do
+    local catInfo = LOG_CATEGORIES[e.category]
+    local label = catInfo and catInfo.label or e.category
+    table.insert(lines, "[" .. e.timestamp .. "] [" .. label .. "] " .. e.message)
+  end
+  
+  local text = table.concat(lines, "\n")
+  print("=== MCP Activity Log ===\n" .. text .. "\n=== End Log ===")
+  
+  addLog("CONNECTION", "Log copied to Output (" .. #logState.entries .. " entries)")
+end)
+```
+
+**Export to ServerStorage**:
+```lua
+exportButton.Activated:Connect(function()
+  local lines = {}
+  for _, e in ipairs(logState.entries) do
+    local catInfo = LOG_CATEGORIES[e.category]
+    local label = catInfo and catInfo.label or e.category
+    table.insert(lines, "[" .. e.timestamp .. "] [" .. label .. "] " .. e.message)
+  end
+  
+  local text = table.concat(lines, "\n")
+  local ss = game:GetService("ServerStorage")
+  
+  -- Remove existing
+  local existing = ss:FindFirstChild("MCPActivityLog")
+  if existing then existing:Destroy() end
+  
+  -- Create new StringValue
+  local sv = Instance.new("StringValue")
+  sv.Name = "MCPActivityLog"
+  sv.Value = text
+  sv.Parent = ss
+  
+  addLog("CONNECTION", "Log exported to ServerStorage.MCPActivityLog")
+end)
+```
+
+## Status Indicators
+
+The plugin provides rich visual feedback:
+
+### Connection Status Visualization
+
+**Three-step status display**:
+
+```lua
+-- Step 1: HTTP server reachable
+step1Dot.BackgroundColor3 = Color3.fromRGB(34, 197, 94)  -- Green
+step1Label.Text = "1. HTTP server reachable (OK)"
+
+-- Step 2: MCP bridge connected
+step2Dot.BackgroundColor3 = Color3.fromRGB(34, 197, 94)  -- Green
+step2Label.Text = "2. MCP bridge connected (OK)"
+
+-- Step 3: Ready for commands
+step3Dot.BackgroundColor3 = Color3.fromRGB(34, 197, 94)  -- Green
+step3Label.Text = "3. Ready for commands (OK)"
+```
+
+**Status states**:
+
+| State | Color | Dot | Label |
+|-------|-------|-----|-------|
+| **Connected** | 🟢 Green | Solid | "Connected (Long Poll)" |
+| **Waiting for MCP** | 🟡 Yellow | Pulsing | "Waiting for MCP server" |
+| **Retrying** | 🟡 Yellow | Pulsing | "Retrying (Xs)" |
+| **Error** | 🔴 Red | Solid | "Server unavailable" |
+| **Offline** | 🔴 Red | Solid | "Disconnected" |
+
+### Troubleshooting Tip
+
+The plugin detects a common stuck state:
+
+```lua
+-- If HTTP OK but MCP not responding for >8 seconds
+if pluginState.lastHttpOk and not mcpConnected then
+  local elapsed = tick() - (pluginState.mcpWaitStartTime or tick())
+  
+  if elapsed > 8 then
+    troubleshootLabel.Visible = true
+    troubleshootLabel.Text = "HTTP is OK but MCP isn't responding. Close all node.exe in Task Manager and restart the server."
+  end
+end
+```
+
+## UI Components
+
+The plugin creates a modern dock widget:
+
+### Main Dock Widget
+
+```lua
+local screenGui = plugin:CreateDockWidgetPluginGuiAsync(
+  "MCPServerInterface",
+  DockWidgetPluginGuiInfo.new(
+    Enum.InitialDockState.Float,
+    false,  -- initEnabled
+    false,  -- overrideRestore
+    400,    -- floatXSize
+    500,    -- floatYSize
+    350,    -- minWidth
+    450     -- minHeight
+  )
+)
+screenGui.Title = "MCP Server v2.0.0"
+```
+
+### UI Sections
+
+<Tabs>
+  <Tab title="Header">
+    **Components**:
+    - Title: "MCP Server"
+    - Version label: "AI Integration • v2.0.0 (Long Poll)"
+    - Status indicator (colored dot with pulse animation)
+    - Status text (ONLINE/OFFLINE/WAITING/etc.)
+    
+    **Styling**:
+    - Gradient background (blue to purple)
+    - Rounded corners
+    - White text
+  </Tab>
+  
+  <Tab title="Connection Settings">
+    **Components**:
+    - Server URL input box
+    - Default: `http://localhost:3002`
+    - Editable for custom ports
+    
+    **Features**:
+    - Auto-save on change
+    - Validation (none currently - accepts any URL)
+  </Tab>
+  
+  <Tab title="Status Section">
+    **Components**:
+    - Main status label
+    - Detail status: "HTTP: X MCP: X"
+    - Three-step connection indicators
+    - Troubleshooting tip (conditional)
+    
+    **Updates**:
+    - Real-time during polling
+    - Color-coded by state
+  </Tab>
+  
+  <Tab title="Connect Button">
+    **States**:
+    - Green "Connect" when offline
+    - Red "Disconnect" when online
+    
+    **Hover effects**:
+    - Color darkens on hover
+    - Smooth transitions
+  </Tab>
+  
+  <Tab title="Activity Log">
+    **Components**:
+    - Collapsible log panel
+    - Entry count display
+    - Clear/Copy/Export buttons
+    - Scrollable log entries
+    
+    **Features**:
+    - 200-entry buffer (FIFO)
+    - Auto-scroll to bottom
+    - Color-coded by category
+    - Throttled POLL logging (1 in 10)
+  </Tab>
+</Tabs>
+
+## Script Line Editing
+
+The plugin implements advanced script editing:
+
+### Line Splitting and Joining
+
+```lua
+local function splitLines(source)
+  local normalized = (source or ""):gsub("\r\n", "\n"):gsub("\r", "\n")
+  local endsWithNewline = normalized:sub(-1) == "\n"
+  
+  local lines = {}
+  local start = 1
+  
+  while true do
+    local newlinePos = string.find(normalized, "\n", start, true)
+    
+    if newlinePos then
+      table.insert(lines, string.sub(normalized, start, newlinePos - 1))
+      start = newlinePos + 1
+    else
+      local remainder = string.sub(normalized, start)
+      if remainder ~= "" or not endsWithNewline then
+        table.insert(lines, remainder)
+      end
+      break
+    end
+  end
+  
+  if #lines == 0 then
+    table.insert(lines, "")
+  end
+  
+  return lines, endsWithNewline
+end
+
+local function joinLines(lines, hadTrailingNewline)
+  local source = table.concat(lines, "\n")
+  
+  if hadTrailingNewline and source:sub(-1) ~= "\n" then
+    source ..= "\n"
+  end
+  
+  return source
+end
+```
+
+### Edit Script Lines Handler
+
+```lua
+handlers.editScriptLines = function(requestData)
+  local instancePath = requestData.instancePath
+  local startLine = requestData.startLine
+  local endLine = requestData.endLine
+  local newContent = requestData.newContent
+  
+  local instance = getInstanceByPath(instancePath)
+  if not instance or not instance:IsA("LuaSourceContainer") then
+    return { error = "Script not found" }
+  end
+  
+  local lines, hadTrailingNewline = splitLines(instance.Source)
+  
+  -- Delete lines from startLine to endLine
+  for i = endLine, startLine, -1 do
+    if i >= 1 and i <= #lines then
+      table.remove(lines, i)
+    end
+  end
+  
+  -- Insert new content at startLine
+  local newLines = splitLines(newContent)
+  for i = #newLines, 1, -1 do
+    table.insert(lines, startLine, newLines[i])
+  end
+  
+  instance.Source = joinLines(lines, hadTrailingNewline)
+  
+  return {
+    success = true,
+    linesAffected = (endLine - startLine + 1),
+    newLineCount = #newLines
+  }
+end
+```
+
+## Performance Optimizations
+
+<AccordionGroup>
+  <Accordion title="Log Throttling">
+    **Problem**: POLL logs every ~25 seconds would spam the UI
+    
+    **Solution**: Only log every 10th POLL event
+    
+    ```lua
+    if category == "POLL" then
+      logState.pollCounter += 1
+      if logState.pollCounter % 10 ~= 1 then return end
+    end
+    ```
+  </Accordion>
+  
+  <Accordion title="Depth Limiting">
+    **Problem**: Deep hierarchies (1000+ objects) take too long to traverse
+    
+    **Solution**: Cap recursion depth at 10 levels
+    
+    ```lua
+    local function buildTree(instance, depth)
+      if depth > 10 then
+        return { name = instance.Name, children = {} }
+      end
+      -- ...
+    end
+    ```
+  </Accordion>
+  
+  <Accordion title="Log Buffer Management">
+    **Problem**: Infinite logs consume memory
+    
+    **Solution**: FIFO buffer with 200-entry limit
+    
+    ```lua
+    while #logState.entries > LOG_MAX_ENTRIES do
+      local oldest = table.remove(logState.entries, 1)
+      if oldest.frame then oldest.frame:Destroy() end
+    end
+    ```
+  </Accordion>
+  
+  <Accordion title="Auto-Scroll Deferral">
+    **Problem**: Immediate scroll causes frame drops
+    
+    **Solution**: Defer scroll to next frame
+    
+    ```lua
+    task.defer(function()
+      logScrollFrame.CanvasPosition = Vector2.new(0, bottomY)
+    end)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+All handlers use pcall for safety:
+
+```lua
+handlers.setProperty = function(requestData)
+  local instancePath = requestData.instancePath
+  local propertyName = requestData.propertyName
+  local propertyValue = requestData.propertyValue
+  
+  local instance = getInstanceByPath(instancePath)
+  if not instance then
+    return { error = "Instance not found: " .. instancePath }
+  end
+  
+  local convertedValue = convertPropertyValue(instance, propertyName, propertyValue)
+  
+  local success, err = pcall(function()
+    instance[propertyName] = convertedValue
+  end)
+  
+  if success then
+    return {
+      success = true,
+      instancePath = instancePath,
+      propertyName = propertyName,
+      newValue = tostring(instance[propertyName])
+    }
+  else
+    return { error = "Failed to set property: " .. tostring(err) }
+  end
+end
+```
+
+## Installation Methods
+
+The plugin supports three installation methods:
+
+<Tabs>
+  <Tab title="Creator Store">
+    **Easiest method** - Install directly from Roblox Creator Store:
+    
+    1. Visit: https://create.roblox.com/store/asset/132985143757536
+    2. Click "Install" button
+    3. Plugin appears immediately (no restart needed)
+  </Tab>
+  
+  <Tab title="Direct Download">
+    **Manual installation**:
+    
+    1. Download `MCPPlugin.rbxmx` from GitHub releases
+    2. Save to `%LOCALAPPDATA%/Roblox/Plugins/`
+    3. Restart Roblox Studio
+  </Tab>
+  
+  <Tab title="Local Plugin">
+    **Development method**:
+    
+    1. Copy plugin code from `plugin.luau`
+    2. Create Script in ServerScriptService
+    3. Paste code
+    4. Right-click → "Save as Local Plugin..."
+    5. Plugin appears immediately
+  </Tab>
+</Tabs>
+
+## Configuration
+
+The plugin can be customized by editing these values:
+
+```lua
+-- Server URLs
+serverUrl = "http://localhost:3002"        -- HTTP bridge
+mcpServerUrl = "http://localhost:3001"     -- MCP server (unused)
+
+-- Retry settings
+currentRetryDelay = 0.5                    -- Initial retry delay (seconds)
+maxRetryDelay = 5                          -- Maximum retry delay (seconds)
+retryBackoffMultiplier = 1.2               -- Exponential backoff factor
+maxFailuresBeforeError = 50                -- Failure threshold
+
+-- Logging settings
+LOG_MAX_ENTRIES = 200                      -- Max log entries in buffer
+POLL_LOG_THROTTLE = 10                     -- Log every Nth poll
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="diagram-project" href="/concepts/architecture">
+    Understand how the plugin fits into the overall system
+  </Card>
+  
+  <Card title="Communication Protocol" icon="arrows-left-right" href="/concepts/communication-protocol">
+    Learn about the long-polling protocol the plugin implements
+  </Card>
+</CardGroup>

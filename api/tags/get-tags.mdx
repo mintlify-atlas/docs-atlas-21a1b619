@@ -1,0 +1,193 @@
+---
+title: Get Tags
+description: Get all CollectionService tags on a Roblox instance
+---
+
+# Get Tags
+
+Retrieve all CollectionService tags attached to a Roblox instance. Tags are string labels used to categorize and query instances.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`)
+</ParamField>
+
+## Response
+
+Returns an array of tag strings:
+```json
+{
+  "tags": ["Weapon", "Melee", "Collectible"]
+}
+```
+
+Returns empty array `[]` if no tags exist.
+
+## Example Usage
+
+### Get Tags on Instance
+```javascript
+// Get weapon tags
+get_tags("game.Workspace.Sword")
+// Returns: { "tags": ["Weapon", "Melee", "Legendary"] }
+
+// Get NPC tags
+get_tags("game.Workspace.Zombie")
+// Returns: { "tags": ["Enemy", "Undead", "Aggressive"] }
+
+// Get instance with no tags
+get_tags("game.Workspace.EmptyPart")
+// Returns: { "tags": [] }
+```
+
+### Check for Specific Tags
+```javascript
+// Check if instance has "Weapon" tag
+const result = get_tags("game.Workspace.Sword");
+const hasWeaponTag = result.tags.includes("Weapon");
+
+if (hasWeaponTag) {
+  console.log("This is a weapon!");
+}
+```
+
+### Audit Tags Across Multiple Instances
+```javascript
+// Get tags on all workspace children
+const instances = [
+  "game.Workspace.Part1",
+  "game.Workspace.Part2",
+  "game.Workspace.Part3"
+];
+
+instances.forEach(path => {
+  const tags = get_tags(path);
+  console.log(`${path}:`, tags.tags.join(", "));
+});
+```
+
+## Use Cases
+
+### Tag-Based Systems
+Query which systems an instance belongs to (e.g., weapon system, enemy AI, collectible system).
+
+### Debugging
+Verify that instances have correct tags for gameplay systems to function properly.
+
+### Tag Inheritance
+Check parent/child tag relationships when implementing tag-based behavior inheritance.
+
+### Conditional Logic
+Make decisions based on tag presence (e.g., if object has "Flammable" tag, apply fire damage).
+
+### Tag Migration
+Audit existing tags before renaming or consolidating tag systems.
+
+## What are CollectionService Tags?
+
+Tags are string labels managed by Roblox's `CollectionService`. They allow you to:
+
+- **Categorize instances** without using folder hierarchies
+- **Query instances** by tag using `get_tagged`
+- **Apply behaviors** to tagged instances in scripts
+- **Multi-categorize** instances (one instance can have many tags)
+
+### Tags vs. Attributes
+
+| Feature | Tags | Attributes |
+|---------|------|------------|
+| **Type** | String labels only | Multiple data types |
+| **Purpose** | Categorization/grouping | Data storage |
+| **Query** | Find all instances with tag | Must search manually |
+| **Count** | Unlimited tags per instance | ~150 attributes per instance |
+| **Example** | "Weapon", "Enemy", "Collectible" | Damage: 50, Speed: 16 |
+
+## Integration with Tag System
+
+### Complete Tag Workflow
+```javascript
+// 1. Get all instances with a tag
+const weapons = get_tagged("Weapon");
+
+// 2. For each weapon, inspect its tags
+weapons.forEach(weaponPath => {
+  const tags = get_tags(weaponPath);
+  
+  // 3. Conditionally add more tags
+  if (tags.tags.includes("Melee")) {
+    add_tag(weaponPath, "ShortRange");
+  }
+  
+  // 4. Remove deprecated tags
+  if (tags.tags.includes("OldWeaponTag")) {
+    remove_tag(weaponPath, "OldWeaponTag");
+  }
+});
+```
+
+## Performance Considerations
+
+- Extremely fast operation (no hierarchy traversal)
+- More efficient than calling `add_tag`/`remove_tag` to test tag existence
+- Ideal for batch operations checking multiple tags
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Returns empty array `[]` if instance has no tags (not an error)
+- Tags are returned in arbitrary order (not alphabetical or insertion order)
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Add Tag" icon="plus" href="/api/tags/add-tag">
+    Add a CollectionService tag to an instance
+  </Card>
+  <Card title="Remove Tag" icon="minus" href="/api/tags/remove-tag">
+    Remove a tag from an instance
+  </Card>
+  <Card title="Get Tagged" icon="search" href="/api/tags/get-tagged">
+    Find all instances with a specific tag
+  </Card>
+</CardGroup>
+
+## Common Tag Patterns
+
+### Gameplay Systems
+```javascript
+// Check if object is interactive
+const tags = get_tags("game.Workspace.Door");
+if (tags.tags.includes("Interactable")) {
+  // Allow player interaction
+}
+```
+
+### Enemy Classification
+```javascript
+// Categorize enemy type
+const tags = get_tags("game.Workspace.Enemy");
+const isBoss = tags.tags.includes("Boss");
+const isUndead = tags.tags.includes("Undead");
+const isAggressive = tags.tags.includes("Aggressive");
+```
+
+### Team Assignment
+```javascript
+// Check team affiliation
+const tags = get_tags("game.Workspace.Soldier");
+if (tags.tags.includes("RedTeam")) {
+  // Apply red team logic
+} else if (tags.tags.includes("BlueTeam")) {
+  // Apply blue team logic
+}
+```
+
+## Notes
+
+- Tags are visible in Studio's Properties panel under "Tags" section
+- Tags are case-sensitive (`"Weapon"` ≠ `"weapon"`)
+- Tags replicate from server to client automatically
+- Maximum tag name length: 100 characters
+- Tags persist when saving the game file
+- One instance can have unlimited tags (practical limit ~100)

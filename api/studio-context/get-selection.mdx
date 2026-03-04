@@ -1,0 +1,345 @@
+---
+title: get_selection
+description: Retrieve all currently selected objects in Roblox Studio Explorer
+---
+
+## Overview
+
+The `get_selection` tool retrieves information about all instances currently selected in Roblox Studio's Explorer window. This enables AI assistants and automation tools to operate on whatever the user has selected, providing a natural and intuitive workflow.
+
+## Use Cases
+
+- Operate on objects the user has manually selected in Studio
+- Build "act on selection" workflows for batch operations
+- Validate selections before performing operations
+- Guide users to select specific objects for processing
+- Create context-aware tools that adapt to user selection
+- Inspect properties of selected objects
+
+## Parameters
+
+This tool takes no parameters.
+
+```json
+{}
+```
+
+## Response Structure
+
+<ResponseField name="selection" type="array">
+  Array of selected instances. Empty array if nothing is selected.
+</ResponseField>
+
+<ResponseField name="selection[].path" type="string">
+  Full instance path in dot notation (e.g., "game.Workspace.Part")
+</ResponseField>
+
+<ResponseField name="selection[].name" type="string">
+  The name of the selected instance
+</ResponseField>
+
+<ResponseField name="selection[].className" type="string">
+  The Roblox class type of the selected instance
+</ResponseField>
+
+<ResponseField name="selection[].parent" type="string">
+  Path to the parent instance
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "selection": [
+    {
+      "path": "game.Workspace.Level_01.Platform_1",
+      "name": "Platform_1",
+      "className": "Part",
+      "parent": "game.Workspace.Level_01"
+    },
+    {
+      "path": "game.Workspace.Level_01.Platform_2",
+      "name": "Platform_2",
+      "className": "Part",
+      "parent": "game.Workspace.Level_01"
+    }
+  ]
+}
+```
+
+### Empty Selection Response
+
+```json
+{
+  "selection": []
+}
+```
+
+## Usage Examples
+
+### Basic Selection Retrieval
+
+```javascript
+// Get currently selected objects
+const result = await mcpClient.callTool('get_selection', {});
+
+if (result.selection.length === 0) {
+  console.log('No objects selected. Please select objects in Studio.');
+} else {
+  console.log(`${result.selection.length} object(s) selected:`);
+  result.selection.forEach(obj => {
+    console.log(`  - ${obj.name} (${obj.className})`);
+  });
+}
+```
+
+### Operate on Selected Objects
+
+```javascript
+// Change properties of selected objects
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length === 0) {
+  throw new Error('Please select at least one object in Studio');
+}
+
+const paths = selection.selection.map(obj => obj.path);
+
+// Make all selected parts red and transparent
+await mcpClient.callTool('mass_set_property', {
+  paths: paths,
+  propertyName: 'BrickColor',
+  propertyValue: 'Really red'
+});
+
+await mcpClient.callTool('mass_set_property', {
+  paths: paths,
+  propertyName: 'Transparency',
+  propertyValue: 0.5
+});
+
+console.log(`Updated ${paths.length} objects`);
+```
+
+### Validate Selection Type
+
+```javascript
+// Ensure user selected only Parts
+const selection = await mcpClient.callTool('get_selection', {});
+
+const nonParts = selection.selection.filter(obj => obj.className !== 'Part');
+
+if (nonParts.length > 0) {
+  console.log('Error: Please select only Part objects.');
+  console.log('Invalid selections:');
+  nonParts.forEach(obj => {
+    console.log(`  - ${obj.name} (${obj.className})`);
+  });
+} else {
+  console.log('All selected objects are Parts. Proceeding...');
+  // Continue with operation
+}
+```
+
+### Interactive Workflow
+
+```javascript
+// Guide user through selection-based workflow
+console.log('Step 1: Select the platforms you want to modify in Studio.');
+console.log('Press Enter when ready...');
+
+// Wait for user input (implementation depends on your environment)
+await waitForUserInput();
+
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length === 0) {
+  console.log('No objects selected. Exiting.');
+  return;
+}
+
+console.log(`Processing ${selection.selection.length} platforms...`);
+
+// Perform operations on selected objects
+for (const obj of selection.selection) {
+  console.log(`  Processing ${obj.name}...`);
+  // ... do work ...
+}
+
+console.log('Done!');
+```
+
+### Inspect Selected Object Properties
+
+```javascript
+// Get detailed info about selected objects
+const selection = await mcpClient.callTool('get_selection', {});
+
+for (const obj of selection.selection) {
+  console.log(`\n=== ${obj.name} ===`);
+  
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: obj.path
+  });
+  
+  console.log(`Class: ${obj.className}`);
+  console.log(`Parent: ${obj.parent}`);
+  console.log('Properties:');
+  console.log(JSON.stringify(props, null, 2));
+}
+```
+
+### Group Selected Objects
+
+```javascript
+// Group selected objects into a Model
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length < 2) {
+  console.log('Please select at least 2 objects to group');
+} else {
+  const paths = selection.selection.map(obj => obj.path);
+  
+  await mcpClient.callTool('group_objects', {
+    paths: paths,
+    groupType: 'Model',
+    groupName: 'GroupedObjects'
+  });
+  
+  console.log(`Grouped ${paths.length} objects into 'GroupedObjects'`);
+}
+```
+
+### Clone Selected Objects
+
+```javascript
+// Clone all selected objects
+const selection = await mcpClient.callTool('get_selection', {});
+
+for (const obj of selection.selection) {
+  await mcpClient.callTool('clone_object', {
+    instancePath: obj.path,
+    newName: `${obj.name}_Copy`
+  });
+  
+  console.log(`Cloned ${obj.name}`);
+}
+
+console.log(`Created ${selection.selection.length} clones`);
+```
+
+### Context-Aware Operations
+
+```javascript
+// Perform different operations based on selection type
+const selection = await mcpClient.callTool('get_selection', {});
+
+for (const obj of selection.selection) {
+  if (obj.className === 'Part') {
+    // Make parts red
+    await mcpClient.callTool('set_property', {
+      instancePath: obj.path,
+      propertyName: 'BrickColor',
+      propertyValue: 'Really red'
+    });
+  } else if (obj.className === 'Script') {
+    // Add comment to scripts
+    const source = await mcpClient.callTool('get_script_source', {
+      instancePath: obj.path
+    });
+    
+    await mcpClient.callTool('insert_script_lines', {
+      instancePath: obj.path,
+      afterLine: 0,
+      newContent: '-- Modified by automation'
+    });
+  }
+  
+  console.log(`Processed ${obj.name}`);
+}
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Always check if `selection.selection.length === 0` before operating on the selection. Provide clear feedback to users when nothing is selected.
+</Tip>
+
+<Tip>
+  Use `get_selection` to build interactive, user-guided workflows. This is more intuitive than asking users to type instance paths.
+</Tip>
+
+<Info>
+  Selection state is captured at the moment the tool is called. If the user changes their selection after calling `get_selection`, you'll need to call it again to get the updated selection.
+</Info>
+
+<Warning>
+  If the user changes selection while your script is running operations, the selection data you have may become stale. Consider storing paths from the initial selection.
+</Warning>
+
+<Tip>
+  Validate selection types before performing operations. If you expect Parts but the user selected Scripts, catch this early and provide clear error messages.
+</Tip>
+
+## Common Workflows
+
+**Selection → Validation → Operation**
+```javascript
+// 1. Get selection
+const selection = await mcpClient.callTool('get_selection', {});
+
+// 2. Validate
+if (selection.selection.length === 0) {
+  return 'Please select objects first';
+}
+
+// 3. Operate
+const paths = selection.selection.map(obj => obj.path);
+await performBatchOperation(paths);
+```
+
+**Interactive Multi-Step Workflow**
+```javascript
+// Step 1: Select source objects
+console.log('Select source objects and press Enter...');
+await waitForInput();
+const sources = await mcpClient.callTool('get_selection', {});
+
+// Step 2: Select destination
+console.log('Select destination folder and press Enter...');
+await waitForInput();
+const dest = await mcpClient.callTool('get_selection', {});
+
+// Step 3: Clone sources to destination
+for (const src of sources.selection) {
+  await mcpClient.callTool('clone_object', {
+    instancePath: src.path,
+    newParent: dest.selection[0].path
+  });
+}
+```
+
+## Common Issues
+
+**Issue: Selection returns empty array**
+- Ensure objects are actually selected in the Explorer window
+- Verify the MCP bridge plugin is running and connected
+- Try clicking objects again to refresh the selection
+
+**Issue: Selection doesn't update**
+- `get_selection` captures selection state at call time
+- Call the tool again to refresh selection data
+- Selection is not "live" - it's a snapshot
+
+**Issue: Can't select certain objects**
+- Some objects (like Services) may not be selectable in Studio
+- Locked objects might not appear in selection
+- Hidden objects (via properties) can still be selected
+
+## Related Tools
+
+- [`search_objects`](/api/studio-context/search-objects) - Find objects by name, class, or property when you can't manually select them
+- [`get_instance_properties`](/api/instance/get-instance-properties) - Get detailed properties of selected objects
+- [`mass_set_property`](/api/property/mass-set-property) - Perform batch property changes on selected objects
+- [`group_objects`](/api/object/group-objects) - Group selected objects into a Model or Folder
+- [`get_descendants`](/api/instance/get-descendants) - Get all descendants of a selected container

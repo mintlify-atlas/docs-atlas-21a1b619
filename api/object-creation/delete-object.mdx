@@ -1,0 +1,45 @@
+---
+title: 'delete_object'
+description: 'Delete a Roblox object instance'
+---
+
+## Description
+
+Deletes a Roblox object instance from the game. This operation permanently removes the object and all its descendants from the hierarchy.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the instance to delete (e.g., "game.Workspace.MyPart")
+</ParamField>
+
+## Example
+
+```json
+{
+  "instancePath": "game.Workspace.Obby.Level_01.Platform_05"
+}
+```
+
+## Use Cases
+
+- Removing objects that are no longer needed
+- Cleaning up test objects during development
+- Deleting placeholder objects before final build
+- Implementing dynamic object management in games
+- Resetting level sections by removing and recreating objects
+
+## Important Notes
+
+<Warning>
+  Deletion is permanent. Make sure you have the correct instance path before executing this tool.
+</Warning>
+
+- Deleting a parent object will delete all its children
+- Deleted objects cannot be recovered
+- Make sure no scripts are referencing the object before deletion
+
+## Related Tools
+
+- [create_object](/api/object-creation/create-object) - Create new objects
+- [smart_duplicate](/api/object-creation/smart-duplicate) - Duplicate existing objects

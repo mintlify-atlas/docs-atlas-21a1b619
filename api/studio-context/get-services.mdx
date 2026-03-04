@@ -1,0 +1,213 @@
+---
+title: 'get_services'
+description: 'Retrieve available Roblox services and their children from the game DataModel'
+---
+
+## Overview
+
+The `get_services` tool retrieves information about Roblox services (like Workspace, ReplicatedStorage, ServerScriptService) and optionally lists their immediate children. Services are singleton objects that provide core game functionality in Roblox.
+
+## Use Cases
+
+- List all available services in the game
+- Explore the structure of a specific service
+- Verify that required services exist before operations
+- Navigate the game hierarchy from service roots
+- Understand what containers are available for organizing game objects
+
+## Parameters
+
+<ParamField path="serviceName" type="string" optional>
+  Optional name of a specific service to query. If omitted, returns all available services.
+  
+  Common service names:
+  - `Workspace` - The 3D game world
+  - `ReplicatedStorage` - Objects replicated to all clients
+  - `ServerScriptService` - Server-side scripts
+  - `StarterPlayer` - Player setup and starter scripts
+  - `ServerStorage` - Server-only storage
+  - `Lighting` - Lighting and atmosphere settings
+</ParamField>
+
+### Example Input
+
+```json
+{
+  "serviceName": "ReplicatedStorage"
+}
+```
+
+Or for all services:
+
+```json
+{}
+```
+
+## Response Structure
+
+<ResponseField name="services" type="array">
+  Array of service objects, each containing service details
+</ResponseField>
+
+<ResponseField name="services[].name" type="string">
+  The name of the service (e.g., "Workspace", "ReplicatedStorage")
+</ResponseField>
+
+<ResponseField name="services[].className" type="string">
+  The Roblox class name of the service
+</ResponseField>
+
+<ResponseField name="services[].children" type="array">
+  Array of immediate child instances within the service
+</ResponseField>
+
+<ResponseField name="services[].children[].name" type="string">
+  Name of the child instance
+</ResponseField>
+
+<ResponseField name="services[].children[].className" type="string">
+  Roblox class type of the child instance (e.g., "Part", "Folder", "ModuleScript")
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "services": [
+    {
+      "name": "ReplicatedStorage",
+      "className": "ReplicatedStorage",
+      "children": [
+        { "name": "Assets", "className": "Folder" },
+        { "name": "SharedModules", "className": "Folder" },
+        { "name": "GameConfig", "className": "ModuleScript" }
+      ]
+    }
+  ]
+}
+```
+
+## Usage Examples
+
+### Get All Services
+
+```javascript
+// List all available services in the game
+const result = await mcpClient.callTool('get_services', {});
+
+result.services.forEach(service => {
+  console.log(`${service.name} (${service.className})`);
+  console.log(`  Children: ${service.children.length}`);
+});
+```
+
+### Query Specific Service
+
+```javascript
+// Get details about ServerScriptService
+const result = await mcpClient.callTool('get_services', {
+  serviceName: 'ServerScriptService'
+});
+
+const service = result.services[0];
+console.log(`Scripts in ${service.name}:`);
+
+service.children.forEach(child => {
+  if (child.className === 'Script' || child.className === 'ModuleScript') {
+    console.log(`  - ${child.name}`);
+  }
+});
+```
+
+### Verify Service Exists
+
+```javascript
+// Check if ReplicatedStorage has required folders
+const result = await mcpClient.callTool('get_services', {
+  serviceName: 'ReplicatedStorage'
+});
+
+const service = result.services[0];
+const hasAssets = service.children.some(c => c.name === 'Assets');
+
+if (!hasAssets) {
+  console.log('Creating Assets folder...');
+  await mcpClient.callTool('create_object', {
+    className: 'Folder',
+    parent: 'game.ReplicatedStorage',
+    name: 'Assets'
+  });
+}
+```
+
+### Map Game Architecture
+
+```javascript
+// Build a map of where different types of content live
+const result = await mcpClient.callTool('get_services', {});
+
+const serviceMap = {};
+
+result.services.forEach(service => {
+  serviceMap[service.name] = {
+    totalChildren: service.children.length,
+    scripts: service.children.filter(c => 
+      c.className.includes('Script')
+    ).length,
+    folders: service.children.filter(c => 
+      c.className === 'Folder'
+    ).length
+  };
+});
+
+console.log('Game Structure:', serviceMap);
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use `get_services` without parameters to get a quick overview of your game's organization. This is helpful at the start of automation workflows.
+</Tip>
+
+<Tip>
+  When querying a specific service, you get the immediate children. Use [`get_descendants`](/api/instance/get-descendants) or [`get_project_structure`](/api/project/get-project-structure) for deeper hierarchy exploration.
+</Tip>
+
+<Warning>
+  Service names are case-sensitive. Use exact names like "ServerScriptService", not "serverscriptservice" or "ServerScript".
+</Warning>
+
+<Info>
+  Not all services will have children. Some services like `Lighting` or `SoundService` primarily hold properties rather than instances.
+</Info>
+
+## Common Service Names
+
+| Service | Purpose |
+|---------|--------|
+| `Workspace` | The 3D world where visible game objects live |
+| `ReplicatedStorage` | Objects replicated to all clients |
+| `ServerScriptService` | Server-side scripts (not replicated to clients) |
+| `ServerStorage` | Server-only storage (not replicated) |
+| `StarterPlayer` | Player starter scripts and configuration |
+| `StarterGui` | UI that starts with the player |
+| `Lighting` | Global lighting and atmosphere settings |
+| `SoundService` | Global sound management |
+| `Teams` | Team configuration for team-based games |
+
+## Common Issues
+
+**Issue: Service not found**
+- Verify the service name is spelled correctly and matches Roblox's exact casing
+- Not all services exist in every game; some are created on-demand
+
+**Issue: Children list is empty**
+- This is normal for newly created places or services that don't contain objects
+- Some services like `Lighting` primarily contain properties, not child instances
+
+## Related Tools
+
+- [`get_project_structure`](/api/project/get-project-structure) - Get complete game hierarchy with depth control
+- [`get_descendants`](/api/instance/get-descendants) - Get all descendants of an instance with filters
+- [`get_instance_children`](/api/instance/get-instance-children) - Get children of any instance, not just services
+- [`search_objects`](/api/studio-context/search-objects) - Search for instances across the entire game

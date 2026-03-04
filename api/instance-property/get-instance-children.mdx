@@ -1,0 +1,218 @@
+---
+title: 'Get Instance Children'
+description: 'Retrieve child instances and their class types from a Roblox parent instance'
+---
+
+## Overview
+
+The `get_instance_children` tool returns a list of all direct children of a specified Roblox instance, including their names and class types. This is useful for exploring hierarchies, finding specific objects, and understanding game structure.
+
+<Note>
+  This tool only returns **direct children**, not descendants. For deep traversal, use `get_descendants` instead.
+</Note>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation.
+  
+  **Examples:**
+  - `game.Workspace` - Get all top-level objects in Workspace
+  - `game.ServerScriptService` - List all scripts in ServerScriptService
+  - `game.ReplicatedStorage.Assets` - Get children of an Assets folder
+  - `game.Workspace.Model` - List parts and objects inside a Model
+</ParamField>
+
+## Response Format
+
+<ResponseField name="children" type="array">
+  Array of child instances with their metadata.
+  
+  <ResponseField name="name" type="string">
+    The child instance name
+  </ResponseField>
+  
+  <ResponseField name="className" type="string">
+    The Roblox class type (e.g., "Part", "Script", "Folder", "Model")
+  </ResponseField>
+  
+  <ResponseField name="path" type="string">
+    Full path to the child instance
+  </ResponseField>
+</ResponseField>
+
+## Code Examples
+
+### List Workspace Children
+
+```typescript
+// Get all top-level objects in Workspace
+const result = await callTool('get_instance_children', {
+  instancePath: 'game.Workspace'
+});
+
+console.log(result.children);
+// Returns: [
+//   { name: "Baseplate", className: "Part", path: "game.Workspace.Baseplate" },
+//   { name: "SpawnLocation", className: "SpawnLocation", path: "game.Workspace.SpawnLocation" },
+//   { name: "Camera", className: "Camera", path: "game.Workspace.Camera" }
+// ]
+```
+
+### Find All Scripts in a Service
+
+```typescript
+// List all scripts in ServerScriptService
+const scripts = await callTool('get_instance_children', {
+  instancePath: 'game.ServerScriptService'
+});
+
+const scriptNames = scripts.children
+  .filter(child => child.className === 'Script' || child.className === 'ModuleScript')
+  .map(child => child.name);
+
+console.log('Scripts found:', scriptNames);
+```
+
+### Explore Model Contents
+
+```typescript
+// See what's inside a Model
+const modelChildren = await callTool('get_instance_children', {
+  instancePath: 'game.Workspace.House'
+});
+
+modelChildren.children.forEach(child => {
+  console.log(`${child.name} (${child.className})`);
+});
+// Output:
+// Door (Part)
+// Window (Part)
+// Roof (MeshPart)
+// Script (Script)
+```
+
+### Count Children by Type
+
+```typescript
+// Count how many of each type of object exists
+const children = await callTool('get_instance_children', {
+  instancePath: 'game.Workspace.Level1'
+});
+
+const counts = {};
+children.children.forEach(child => {
+  counts[child.className] = (counts[child.className] || 0) + 1;
+});
+
+console.log(counts);
+// Output: { Part: 15, Script: 3, Model: 2 }
+```
+
+## Common Use Cases
+
+### 1. Hierarchy Exploration
+
+Navigate game structure to understand organization:
+
+```typescript
+const folders = await callTool('get_instance_children', {
+  instancePath: 'game.ReplicatedStorage'
+});
+
+folders.children.forEach(child => {
+  if (child.className === 'Folder') {
+    console.log(`Found folder: ${child.name}`);
+  }
+});
+```
+
+### 2. Find Specific Objects
+
+Locate objects by name within a parent:
+
+```typescript
+const workspace = await callTool('get_instance_children', {
+  instancePath: 'game.Workspace'
+});
+
+const spawnLocation = workspace.children.find(child => child.name === 'SpawnLocation');
+if (spawnLocation) {
+  console.log('Spawn found at:', spawnLocation.path);
+}
+```
+
+### 3. Batch Operations on Children
+
+Get all children, then perform operations on them:
+
+```typescript
+// Get all parts in a folder
+const parts = await callTool('get_instance_children', {
+  instancePath: 'game.Workspace.Platforms'
+});
+
+const partPaths = parts.children
+  .filter(child => child.className === 'Part')
+  .map(child => child.path);
+
+// Now set property on all parts
+for (const path of partPaths) {
+  await callTool('set_property', {
+    instancePath: path,
+    propertyName: 'Material',
+    propertyValue: 'Plastic'
+  });
+}
+```
+
+### 4. Validate Structure
+
+Ensure expected children exist:
+
+```typescript
+const children = await callTool('get_instance_children', {
+  instancePath: 'game.ServerScriptService'
+});
+
+const requiredScripts = ['GameManager', 'DataStore', 'PlayerHandler'];
+const childNames = children.children.map(c => c.name);
+
+requiredScripts.forEach(script => {
+  if (!childNames.includes(script)) {
+    console.error(`Missing required script: ${script}`);
+  }
+});
+```
+
+### 5. Filter by Class Type
+
+Get only specific types of objects:
+
+```typescript
+const ui = await callTool('get_instance_children', {
+  instancePath: 'game.StarterGui.MainGui'
+});
+
+const frames = ui.children.filter(child => child.className === 'Frame');
+const buttons = ui.children.filter(child => child.className === 'TextButton');
+
+console.log(`Found ${frames.length} frames and ${buttons.length} buttons`);
+```
+
+## Notes
+
+<Info>
+  **Direct children only**: This tool returns immediate children, not nested descendants. For recursive searching, combine with multiple calls or use `get_descendants`.
+</Info>
+
+<Warning>
+  The returned `path` field provides the full instance path, which you can use directly with other tools like `get_instance_properties` or `set_property`.
+</Warning>
+
+## Related Tools
+
+- **get_descendants** - Get all descendants with filters and depth control
+- **get_instance_properties** - Get all properties of a specific instance
+- **search_objects** - Find instances by name, class, or property
+- **get_project_structure** - Get complete game hierarchy with depth control

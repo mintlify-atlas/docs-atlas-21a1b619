@@ -1,0 +1,171 @@
+---
+title: 'Get Instance Properties'
+description: 'Retrieve all properties of a specific Roblox instance in Studio'
+---
+
+## Overview
+
+The `get_instance_properties` tool retrieves all properties and their current values from any Roblox instance in Studio. This is essential for inspecting object states, debugging, and understanding instance configurations.
+
+<Note>
+  This tool returns comprehensive property data including Position, Size, Color, Transparency, and all other properties available on the instance.
+</Note>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation.
+  
+  **Examples:**
+  - `game.Workspace.Part`
+  - `game.ServerScriptService.MainScript`
+  - `game.ReplicatedStorage.ModuleScript`
+  - `game.Workspace.Model.Baseplate`
+</ParamField>
+
+## Response Format
+
+<ResponseField name="properties" type="object">
+  Object containing all instance properties as key-value pairs.
+  
+  <ResponseField name="Name" type="string">
+    The instance name
+  </ResponseField>
+  
+  <ResponseField name="ClassName" type="string">
+    The Roblox class type (e.g., "Part", "Script", "Model")
+  </ResponseField>
+  
+  <ResponseField name="Position" type="Vector3">
+    3D position as `{X: number, Y: number, Z: number}` (for BasePart objects)
+  </ResponseField>
+  
+  <ResponseField name="Size" type="Vector3">
+    3D size dimensions (for BasePart objects)
+  </ResponseField>
+  
+  <ResponseField name="Parent" type="string">
+    Parent instance path
+  </ResponseField>
+  
+  <ResponseField name="[other properties]" type="various">
+    All other properties specific to the instance class
+  </ResponseField>
+</ResponseField>
+
+## Code Examples
+
+### Get Part Properties
+
+```typescript
+// Retrieve all properties of a Workspace Part
+const result = await callTool('get_instance_properties', {
+  instancePath: 'game.Workspace.SpawnLocation'
+});
+
+console.log(result.properties);
+// Returns: { Name: "SpawnLocation", Position: {X: 0, Y: 0.5, Z: 0}, Size: {X: 12, Y: 1, Z: 12}, ... }
+```
+
+### Inspect Script Properties
+
+```typescript
+// Get properties from a ServerScript
+const scriptProps = await callTool('get_instance_properties', {
+  instancePath: 'game.ServerScriptService.GameManager'
+});
+
+console.log(scriptProps.properties.Disabled); // Check if script is disabled
+console.log(scriptProps.properties.Source); // Get script source code
+```
+
+### Check Model Configuration
+
+```typescript
+// Inspect a Model's properties
+const modelInfo = await callTool('get_instance_properties', {
+  instancePath: 'game.Workspace.PlayerHouse'
+});
+
+console.log(modelInfo.properties.PrimaryPart);
+console.log(modelInfo.properties.WorldPivot);
+```
+
+## Common Use Cases
+
+### 1. Debugging Instance State
+
+Quickly inspect all properties to understand why an object isn't behaving as expected:
+
+```typescript
+const partProps = await callTool('get_instance_properties', {
+  instancePath: 'game.Workspace.Door'
+});
+
+// Check transparency, anchored state, collision settings
+console.log('Transparency:', partProps.properties.Transparency);
+console.log('Anchored:', partProps.properties.Anchored);
+console.log('CanCollide:', partProps.properties.CanCollide);
+```
+
+### 2. Batch Property Reading
+
+Compare properties across multiple instances:
+
+```typescript
+const paths = [
+  'game.Workspace.Part1',
+  'game.Workspace.Part2',
+  'game.Workspace.Part3'
+];
+
+for (const path of paths) {
+  const props = await callTool('get_instance_properties', { instancePath: path });
+  console.log(`${props.properties.Name}: Position=${JSON.stringify(props.properties.Position)}`);
+}
+```
+
+### 3. Property Validation
+
+Verify that objects have correct configurations before operations:
+
+```typescript
+const checkpoint = await callTool('get_instance_properties', {
+  instancePath: 'game.Workspace.Checkpoint1'
+});
+
+if (checkpoint.properties.Transparency !== 0.5) {
+  console.warn('Checkpoint transparency is incorrect!');
+}
+```
+
+### 4. Dynamic Property Discovery
+
+Explore what properties are available on unfamiliar instance types:
+
+```typescript
+const uiElement = await callTool('get_instance_properties', {
+  instancePath: 'game.StarterGui.ScreenGui.Frame'
+});
+
+Object.keys(uiElement.properties).forEach(prop => {
+  console.log(`${prop}: ${uiElement.properties[prop]}`);
+});
+```
+
+## Notes
+
+<Warning>
+  For Vector3 properties (Position, Size, etc.), note that `mass_get_property` does NOT support Vector3. Use `get_instance_properties` instead to retrieve Vector3 values.
+</Warning>
+
+<Info>
+  Properties are returned with their Lua data types. Vector3, Color3, and other Roblox data types are serialized as objects with named components (e.g., `{X: 10, Y: 5, Z: -3}`).
+</Info>
+
+## Related Tools
+
+- **get_instance_children** - Get child instances of a parent
+- **search_by_property** - Find instances with specific property values
+- **set_property** - Modify a single property on an instance
+- **mass_get_property** - Get the same property from multiple instances (does not support Vector3)

@@ -1,0 +1,238 @@
+---
+title: 'set_script_source'
+description: 'Replace entire Roblox script source code'
+icon: 'arrows-rotate'
+---
+
+## Overview
+
+Replace the entire source code of a Roblox script. Uses `ScriptEditorService:UpdateSourceAsync()` to work seamlessly with open script editors in Roblox Studio.
+
+<Warning>
+This replaces the **entire** script. For partial edits, use `edit_script_lines`, `insert_script_lines`, or `delete_script_lines` for better precision and performance.
+</Warning>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path to the script using dot notation
+  
+  **Examples:**
+  - `game.ServerScriptService.MainScript`
+  - `game.StarterPlayer.StarterPlayerScripts.LocalScript`
+  - `game.ReplicatedStorage.Modules.DataManager`
+</ParamField>
+
+<ParamField path="source" type="string" required>
+  Complete new source code for the script (must be valid Lua)
+  
+  **Include all lines, indentation, and newlines exactly as they should appear**
+</ParamField>
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "Script source updated successfully",
+  "lineCount": 156
+}
+```
+
+<ResponseField name="success" type="boolean">
+  Whether the operation completed successfully
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Status message describing the result
+</ResponseField>
+
+<ResponseField name="lineCount" type="number">
+  Number of lines in the new source code
+</ResponseField>
+
+## Usage Examples
+
+### Replace Simple Script
+
+```json
+{
+  "instancePath": "game.ServerScriptService.WelcomeScript",
+  "source": "-- Welcome script\nlocal Players = game:GetService('Players')\n\nPlayers.PlayerAdded:Connect(function(player)\n    print('Welcome', player.Name)\nend)"
+}
+```
+
+### Replace ModuleScript
+
+```json
+{
+  "instancePath": "game.ReplicatedStorage.Modules.DataManager",
+  "source": "local DataManager = {}\n\nfunction DataManager.Save(player, data)\n    -- Save logic here\n    return true\nend\n\nfunction DataManager.Load(player)\n    -- Load logic here\n    return {}\nend\n\nreturn DataManager"
+}
+```
+
+### Replace LocalScript with Multiple Functions
+
+```json
+{
+  "instancePath": "game.StarterPlayer.StarterPlayerScripts.ClientHandler",
+  "source": "-- Client handler\nlocal Players = game:GetService('Players')\nlocal player = Players.LocalPlayer\n\nlocal function setupUI()\n    -- UI setup code\n    print('UI setup complete')\nend\n\nlocal function connectEvents()\n    -- Event connections\n    print('Events connected')\nend\n\nsetupUI()\nconnectEvents()"
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Prefer Partial Editing for Large Scripts">
+    For scripts with many lines, use line-specific editing tools instead:
+    - `edit_script_lines` - Replace specific lines
+    - `insert_script_lines` - Add new lines
+    - `delete_script_lines` - Remove lines
+    
+    This is more efficient and reduces the risk of overwriting unintended changes.
+  </Accordion>
+
+  <Accordion title="Validate Lua Syntax">
+    Always ensure your source code is valid Lua before setting. Invalid syntax will cause runtime errors in Roblox.
+    
+    **Common syntax issues:**
+    - Unclosed strings or tables
+    - Missing `end` keywords
+    - Invalid variable names
+    - Wrong indentation levels
+  </Accordion>
+
+  <Accordion title="Preserve Formatting">
+    Maintain consistent indentation and formatting:
+    ```lua
+    -- Good: Consistent indentation
+    function example()
+        if condition then
+            print('Hello')
+        end
+    end
+    
+    -- Bad: Inconsistent indentation
+    function example()
+    if condition then
+    print('Hello')
+    end
+    end
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Special Characters">
+    When passing source as JSON, escape special characters:
+    - Newlines: `\n`
+    - Tabs: `\t`
+    - Quotes: `\"`
+    - Backslashes: `\\`
+  </Accordion>
+
+  <Accordion title="Works with Open Editors">
+    Uses `ScriptEditorService:UpdateSourceAsync()` which:
+    - Updates scripts even if they're open in Studio
+    - Preserves cursor position when possible
+    - Triggers Studio's change detection
+  </Accordion>
+</AccordionGroup>
+
+## When to Use vs Partial Editing
+
+### Use `set_script_source` when:
+- Creating a new script from scratch
+- Completely rewriting a small script (less than 50 lines)
+- Reformatting entire script structure
+- Replacing generated code
+
+### Use partial editing tools when:
+- Modifying specific functions or sections
+- Adding new functions to existing scripts
+- Fixing bugs in specific lines
+- Working with large scripts (>100 lines)
+
+<CodeGroup>
+```json Full Replacement (set_script_source)
+{
+  "instancePath": "game.ServerScriptService.Small",
+  "source": "-- Complete new script\nprint('Hello world')"
+}
+```
+
+```json Partial Edit (edit_script_lines)
+{
+  "instancePath": "game.ServerScriptService.Large",
+  "startLine": 45,
+  "endLine": 47,
+  "newContent": "    print('Updated function')\n    return true"
+}
+```
+</CodeGroup>
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="get_script_source" icon="file-code" href="/api/script-editing/get-script-source">
+    Read script source with line numbers
+  </Card>
+  <Card title="edit_script_lines" icon="pen-to-square" href="/api/script-editing/edit-script-lines">
+    Replace specific line ranges
+  </Card>
+  <Card title="insert_script_lines" icon="plus" href="/api/script-editing/insert-script-lines">
+    Insert new lines at position
+  </Card>
+  <Card title="delete_script_lines" icon="trash" href="/api/script-editing/delete-script-lines">
+    Delete line ranges
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+<ResponseExample>
+```json Error: Script Not Found
+{
+  "error": "Instance not found or is not a script",
+  "instancePath": "game.ServerScriptService.NonExistent"
+}
+```
+
+```json Error: Invalid Source
+{
+  "error": "Source must be a string",
+  "received": "number"
+}
+```
+
+```json Error: Empty Source
+{
+  "error": "Source code cannot be empty",
+  "instancePath": "game.ServerScriptService.MainScript"
+}
+```
+</ResponseExample>
+
+## Example: Rewrite Script
+
+```lua Example Script Before
+-- Old version
+print('Starting...')
+wait(1)
+print('Done')
+```
+
+```json MCP Request
+{
+  "instancePath": "game.ServerScriptService.TestScript",
+  "source": "-- New version with improved logic\nlocal RunService = game:GetService('RunService')\n\nprint('Starting...')\ntask.wait(1)\nprint('Done')\nprint('Using new task library')"
+}
+```
+
+```lua Example Script After
+-- New version with improved logic
+local RunService = game:GetService('RunService')
+
+print('Starting...')
+task.wait(1)
+print('Done')
+print('Using new task library')
+```

@@ -1,0 +1,199 @@
+---
+title: 'smart_duplicate'
+description: 'Smart duplication with automatic naming, positioning, and property variations'
+---
+
+## Description
+
+Creates intelligent duplicates of an existing Roblox object with automatic naming patterns, position offsets, rotation offsets, scale adjustments, and property variations. This is a powerful tool for creating repetitive structures with controlled variations.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the instance to duplicate
+</ParamField>
+
+<ParamField path="count" type="number" required>
+  Number of duplicates to create
+</ParamField>
+
+<ParamField path="options" type="object">
+  Optional configuration for smart duplication
+  
+  <Expandable title="Options Schema">
+    <ParamField path="namePattern" type="string">
+      Name pattern with `{n}` placeholder for numbering (e.g., "Platform{n}", "Button_{n}")
+      
+      The `{n}` will be replaced with the duplicate number (1, 2, 3, etc.)
+    </ParamField>
+    
+    <ParamField path="positionOffset" type="array">
+      X, Y, Z offset applied to each duplicate incrementally
+      
+      Format: `[x, y, z]` where each value is a number
+      
+      Each duplicate will be offset by this amount from the previous one
+    </ParamField>
+    
+    <ParamField path="rotationOffset" type="array">
+      X, Y, Z rotation offset (in degrees) applied to each duplicate incrementally
+      
+      Format: `[x, y, z]` where each value is a number representing degrees
+    </ParamField>
+    
+    <ParamField path="scaleOffset" type="array">
+      X, Y, Z scale multiplier applied to each duplicate incrementally
+      
+      Format: `[x, y, z]` where each value is a number (1.0 = no change)
+      
+      Example: `[1.1, 1.0, 1.0]` makes each duplicate 10% wider in X direction
+    </ParamField>
+    
+    <ParamField path="propertyVariations" type="object">
+      Object mapping property names to arrays of values
+      
+      Each duplicate will get the next value from the array (cycles if more duplicates than values)
+      
+      Example: `{"BrickColor": ["Bright red", "Bright blue", "Bright green"]}`
+    </ParamField>
+    
+    <ParamField path="targetParents" type="array">
+      Array of parent paths for each duplicate
+      
+      Allows placing duplicates under different parents
+      
+      Must have at least as many items as the count parameter
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Examples
+
+### Basic Position Offset
+
+Create 5 platforms in a row:
+
+```json
+{
+  "instancePath": "game.Workspace.Obby.Level_01.Platform_01",
+  "count": 5,
+  "options": {
+    "namePattern": "Platform_{n}",
+    "positionOffset": [0, 0, -15]
+  }
+}
+```
+
+### Spiral Staircase
+
+Create a spiral staircase with rotation and position offsets:
+
+```json
+{
+  "instancePath": "game.Workspace.Stairs.Step",
+  "count": 12,
+  "options": {
+    "namePattern": "Step{n}",
+    "positionOffset": [0, 1, 0],
+    "rotationOffset": [0, 30, 0]
+  }
+}
+```
+
+### Growing Platforms
+
+Create platforms that get progressively larger:
+
+```json
+{
+  "instancePath": "game.Workspace.Template.Platform",
+  "count": 5,
+  "options": {
+    "namePattern": "GrowingPlatform{n}",
+    "positionOffset": [20, 0, 0],
+    "scaleOffset": [1.2, 1.0, 1.2]
+  }
+}
+```
+
+### Color Variations
+
+Create platforms with alternating colors:
+
+```json
+{
+  "instancePath": "game.Workspace.Level.BasePlatform",
+  "count": 6,
+  "options": {
+    "namePattern": "ColorPlatform{n}",
+    "positionOffset": [0, 0, -12],
+    "propertyVariations": {
+      "BrickColor": ["Bright red", "Bright blue", "Bright green"]
+    }
+  }
+}
+```
+
+### Multiple Parents
+
+Duplicate objects into different folders:
+
+```json
+{
+  "instancePath": "game.Workspace.Templates.Obstacle",
+  "count": 3,
+  "options": {
+    "namePattern": "Obstacle{n}",
+    "targetParents": [
+      "game.Workspace.Obby.Level_01",
+      "game.Workspace.Obby.Level_02",
+      "game.Workspace.Obby.Level_03"
+    ]
+  }
+}
+```
+
+### Complex Example
+
+Combining multiple options:
+
+```json
+{
+  "instancePath": "game.Workspace.Template.MovingPlatform",
+  "count": 4,
+  "options": {
+    "namePattern": "MovingPlatform_{n}",
+    "positionOffset": [15, 2, 0],
+    "rotationOffset": [0, 45, 0],
+    "scaleOffset": [1.1, 1.0, 1.1],
+    "propertyVariations": {
+      "BrickColor": ["Bright red", "Bright blue"],
+      "Material": ["SmoothPlastic", "Neon"]
+    }
+  }
+}
+```
+
+## Use Cases
+
+- Creating linear obstacle courses with evenly spaced platforms
+- Building spiral staircases or curved paths
+- Generating repetitive structures (fences, pillars, walls)
+- Creating platforming challenges with size variations
+- Building rainbow-colored structures
+- Duplicating objects across multiple levels or areas
+- Creating scaling or growing patterns
+- Automating level design with consistent spacing
+
+## Behavior Notes
+
+- The original object is NOT counted in the `count` parameter (count=3 creates 3 new duplicates)
+- Offsets are cumulative: duplicate 2 gets 2x the offset, duplicate 3 gets 3x the offset, etc.
+- Property variations cycle: if you have 3 colors and create 7 duplicates, it cycles back to the first color
+- If `targetParents` array is shorter than `count`, the tool will error
+- Name patterns without `{n}` will create objects with identical names (Roblox allows this)
+
+## Related Tools
+
+- [mass_duplicate](/api/object-creation/mass-duplicate) - Perform multiple smart duplications at once
+- [create_object_with_properties](/api/object-creation/create-object-with-properties) - Create objects from scratch

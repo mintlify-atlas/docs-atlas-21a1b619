@@ -1,0 +1,192 @@
+---
+title: Delete Attribute
+description: Remove an attribute from a Roblox instance
+---
+
+# Delete Attribute
+
+Remove a specific attribute from a Roblox instance. This operation is permanent until the attribute is re-added.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`)
+</ParamField>
+
+<ParamField path="attributeName" type="string" required>
+  Name of the attribute to delete
+</ParamField>
+
+## Response
+
+Returns confirmation object:
+```json
+{
+  "success": true,
+  "message": "Attribute 'AttributeName' deleted from instance"
+}
+```
+
+## Example Usage
+
+### Delete Single Attribute
+```javascript
+// Remove damage attribute
+delete_attribute("game.Workspace.Sword", "Damage")
+
+// Remove locked state
+delete_attribute("game.Workspace.Door", "IsLocked")
+
+// Remove deprecated configuration
+delete_attribute("game.Workspace.NPC", "OldBehaviorFlag")
+```
+
+### Clean Up Multiple Attributes
+```javascript
+// Remove multiple attributes from one instance
+const attributesToDelete = ["TempFlag", "DebugMode", "TestValue"];
+attributesToDelete.forEach(attrName => {
+  delete_attribute("game.Workspace.TestObject", attrName);
+});
+```
+
+### Batch Delete Across Instances
+```javascript
+// Remove deprecated attribute from all weapons
+const weaponPaths = [
+  "game.Workspace.Sword",
+  "game.Workspace.Gun",
+  "game.Workspace.Bow"
+];
+
+weaponPaths.forEach(path => {
+  delete_attribute(path, "OldDamageMultiplier");
+});
+```
+
+## Use Cases
+
+### Schema Migration
+Remove deprecated attributes when migrating to a new configuration system.
+
+### Clean Up Test Data
+Delete temporary attributes added during development or testing.
+
+### Reset Configuration
+Clear specific configuration values to restore default behavior.
+
+### Memory Optimization
+Remove unused attributes to reduce instance memory footprint (minor optimization).
+
+### Version Upgrades
+Delete obsolete attributes when upgrading game versions or refactoring systems.
+
+## Workflow Example
+
+### Migrating Weapon System
+```javascript
+// Step 1: Get all weapon instances with old attribute
+const weapons = get_tagged("Weapon");
+
+// Step 2: For each weapon, migrate old attribute to new format
+weapons.forEach(weaponPath => {
+  // Get old damage value
+  const oldDamage = get_attribute(weaponPath, "OldDamage");
+  
+  // Set new damage attribute (with better structure)
+  set_attribute(weaponPath, "DamageConfig", {
+    base: oldDamage,
+    multiplier: 1.0,
+    type: "Physical"
+  });
+  
+  // Delete old attribute
+  delete_attribute(weaponPath, "OldDamage");
+});
+```
+
+## Attribute Change Detection
+
+In Lua, deleting an attribute fires the `AttributeChanged` signal:
+
+```lua
+-- Lua script listening for attribute deletions
+instance:GetAttributeChangedSignal("Damage"):Connect(function()
+  local damage = instance:GetAttribute("Damage")
+  if damage == nil then
+    print("Damage attribute was deleted!")
+  end
+end)
+```
+
+## Safety Considerations
+
+- **No undo**: Once deleted, attributes can only be restored by setting them again
+- **No warning**: Deleting a non-existent attribute does not throw an error
+- **Script dependencies**: Ensure no scripts depend on the attribute before deleting
+- **Replication**: Deletion replicates to clients automatically
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Does NOT throw error if attribute doesn't exist (idempotent operation)
+- Returns success even if attribute was already absent
+
+## Verification
+
+Verify deletion succeeded:
+
+```javascript
+// Delete attribute
+delete_attribute("game.Workspace.Part", "TestAttribute");
+
+// Verify it's gone
+const attrs = get_attributes("game.Workspace.Part");
+if (!attrs.hasOwnProperty("TestAttribute")) {
+  console.log("Attribute successfully deleted");
+}
+```
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Get Attribute" icon="eye" href="/api/attributes/get-attribute">
+    Read a single attribute value
+  </Card>
+  <Card title="Set Attribute" icon="pen" href="/api/attributes/set-attribute">
+    Set or update an attribute value
+  </Card>
+  <Card title="Get Attributes" icon="list" href="/api/attributes/get-attributes">
+    Get all attributes on an instance
+  </Card>
+</CardGroup>
+
+## Alternative: Clearing Values
+
+Instead of deleting, you can set attributes to default values:
+
+```javascript
+// Option 1: Delete attribute
+delete_attribute("game.Workspace.Part", "Damage");
+
+// Option 2: Set to default value (preserves attribute)
+set_attribute("game.Workspace.Part", "Damage", 0);
+```
+
+Choose deletion when:
+- The attribute schema is changing
+- The attribute is no longer needed
+- You want to reduce attribute count
+
+Choose setting to default when:
+- Scripts check for attribute existence
+- You want to preserve the attribute definition
+- Default value has semantic meaning
+
+## Notes
+
+- Deletion is immediate and permanent (until re-added)
+- Fires `AttributeChanged` signal in Lua scripts
+- Does not affect properties (only custom attributes)
+- Replicates automatically from server to clients
+- Does not trigger undo history (cannot be undone with Ctrl+Z)

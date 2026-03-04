@@ -1,0 +1,250 @@
+---
+title: "Plugin Configuration"
+description: "Configure and customize the Roblox Studio MCP Plugin"
+icon: "gear"
+---
+
+The Roblox Studio MCP Plugin offers several configuration options to customize its behavior.
+
+## Connection Settings
+
+### Server URL Configuration
+
+The plugin connects to the MCP server via HTTP. By default, it uses `http://localhost:3002`.
+
+**To change the server URL:**
+
+1. Open the plugin dock widget (click "MCP Server" button in Plugins toolbar)
+2. Find the **"Connection Settings"** section
+3. Update the **"Server URL"** field
+4. The plugin will automatically reconnect with the new URL
+
+<Note>
+  The server URL should point to your MCP server's HTTP endpoint. The default port is `3002`.
+</Note>
+
+```lua Default Configuration
+serverUrl = "http://localhost:3002"
+mcpServerUrl = "http://localhost:3001"  -- Internal MCP bridge
+```
+
+### Connection Behavior
+
+The plugin uses a **long-polling** architecture with the following default settings:
+
+| Setting | Default Value | Description |
+|---------|---------------|-------------|
+| **Poll Interval** | 500ms | Time between polls when MCP is not connected |
+| **Long Poll Timeout** | 25s | Server-side wait time for new requests |
+| **Request Timeout** | 30s | Maximum time for a single API request |
+| **Max Retry Delay** | 5s | Maximum backoff delay on connection failures |
+| **Backoff Multiplier** | 1.2x | Exponential backoff rate |
+| **Max Failures Before Error** | 50 | Consecutive failures before showing error |
+
+## Retry and Backoff Settings
+
+The plugin implements smart retry logic with exponential backoff:
+
+```lua Retry Configuration
+consecutiveFailures = 0
+maxFailuresBeforeError = 50
+currentRetryDelay = 0.5
+maxRetryDelay = 5
+retryBackoffMultiplier = 1.2
+```
+
+**How it works:**
+
+1. On first failure, retry after **0.5 seconds**
+2. Each consecutive failure increases delay by **1.2x**
+3. Delay caps at **5 seconds** maximum
+4. After **50 failures**, shows persistent error state
+5. On successful connection, resets to **0.5 seconds**
+
+<Info>
+  Exponential backoff reduces server load during outages while maintaining responsiveness.
+</Info>
+
+## Activity Log Settings
+
+The plugin includes a built-in activity log with the following configuration:
+
+### Log Categories
+
+| Category | Color | Description |
+|----------|-------|-------------|
+| **CONNECTION** | Blue | Connection status changes |
+| **POLL** | Gray | Long-poll events (throttled 10:1) |
+| **REQUEST** | Cyan | Incoming API requests |
+| **RESPONSE** | Green | API responses and timing |
+| **ERROR** | Red | Error messages |
+| **WARN** | Orange | Warnings and alerts |
+
+### Log Limits
+
+```lua Log Configuration
+LOG_MAX_ENTRIES = 200  -- Maximum stored log entries
+```
+
+<Tip>
+  Poll events are throttled to show only every 10th occurrence to keep the log readable.
+</Tip>
+
+### Log Actions
+
+The activity log provides three buttons:
+
+- **X (Clear)**: Clears all log entries
+- **C (Copy)**: Prints log to Output window for easy copying
+- **E (Export)**: Saves log to `ServerStorage.MCPActivityLog` as StringValue
+
+## Advanced Customization
+
+For developers who want to modify the plugin behavior, edit the source code:
+
+### Poll Interval
+
+```lua plugin.luau
+-- Change the delay when MCP is not connected
+task.wait(1)  -- Change this value (in seconds)
+```
+
+### Debug Mode
+
+Enable verbose logging by modifying log throttling:
+
+```lua plugin.luau
+-- In addLog function, change poll throttle
+if category == "POLL" then
+    logState.pollCounter += 1
+    if logState.pollCounter % 10 ~= 1 then return end  -- Change 10 to 1 for all polls
+end
+```
+
+### Timeout Settings
+
+Modify HTTP request timeouts (requires editing plugin source):
+
+```lua plugin.luau
+HttpService:RequestAsync({
+    Url = pluginState.serverUrl .. "/poll",
+    Method = "GET",
+    Headers = {
+        ["Content-Type"] = "application/json",
+    },
+    -- Note: Timeout is handled server-side for long-polling
+})
+```
+
+## UI Customization
+
+The plugin UI uses a modern design with customizable colors:
+
+### Color Scheme
+
+```lua Color Configuration
+Background: RGB(17, 24, 39)     -- Dark background
+Panels: RGB(31, 41, 55)         -- Panel background
+Header: RGB(59, 130, 246)       -- Blue gradient
+Accent: RGB(99, 102, 241)       -- Indigo accent
+Success: RGB(34, 197, 94)       -- Green status
+Warning: RGB(245, 158, 11)      -- Orange warning
+Error: RGB(239, 68, 68)         -- Red error
+```
+
+### Widget Size
+
+```lua Widget Configuration
+Initial Width: 400px
+Initial Height: 500px
+Minimum Width: 350px
+Minimum Height: 450px
+```
+
+## Security Settings
+
+<Warning>
+  The plugin requires **"Allow HTTP Requests"** enabled in Game Settings → Security.
+</Warning>
+
+### Security Features
+
+- 🏠 **Local-only**: All communication stays on your machine
+- 🚫 **No external servers**: Plugin only talks to localhost
+- 👁️ **Read-only access**: Plugin extracts data but never modifies your place
+- 🔐 **No data collection**: Your projects remain private
+
+### Allowed Endpoints
+
+The plugin only communicates with:
+
+- `http://localhost:3002/poll` - Long-poll for new requests
+- `http://localhost:3002/response` - Send responses back
+
+<Info>
+  All HTTP requests are local-only. The plugin never sends data to external servers.
+</Info>
+
+## Status Indicators
+
+The plugin shows detailed connection status with three verification steps:
+
+### Step 1: HTTP Server Reachable
+- **Green**: HTTP server is responding
+- **Yellow**: Attempting to connect
+- **Red**: Cannot reach server
+
+### Step 2: MCP Bridge Connected
+- **Green**: MCP server is connected and ready
+- **Yellow**: Waiting for MCP server
+- **Red**: MCP server connection failed
+
+### Step 3: Ready for Commands
+- **Green**: System ready to process requests
+- **Yellow**: Initializing
+- **Red**: Not ready
+
+<Tip>
+  If HTTP is OK but MCP shows "waiting" for more than 8 seconds, a troubleshooting tip will appear suggesting to restart the Node.js process.
+</Tip>
+
+## Environment Variables
+
+While the plugin itself doesn't use environment variables, the MCP server does:
+
+```bash MCP Server Configuration
+PORT=3002              # HTTP server port
+MCP_SERVER_PORT=3001   # Internal MCP bridge port
+LOG_LEVEL=info         # Logging verbosity (debug, info, warn, error)
+```
+
+Refer to the [MCP Server documentation](/essentials/mcp-server) for more configuration options.
+
+## Performance Tuning
+
+### For High-Latency Networks
+
+If you experience connection issues on slower networks:
+
+1. Increase retry delay in plugin source
+2. Reduce backoff multiplier for faster recovery
+3. Increase max failures threshold
+
+### For Large Projects
+
+The plugin handles large projects efficiently, but you can optimize:
+
+1. Use specific paths instead of scanning entire game
+2. Limit depth in project structure requests
+3. Use targeted queries instead of broad searches
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/plugin/installation">
+    Go back to installation instructions
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/plugin/troubleshooting">
+    Solve common configuration issues
+  </Card>
+</CardGroup>

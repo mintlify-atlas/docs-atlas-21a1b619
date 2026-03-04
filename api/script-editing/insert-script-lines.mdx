@@ -1,0 +1,425 @@
+---
+title: 'insert_script_lines'
+description: 'Insert new lines into Roblox scripts at specific positions'
+icon: 'plus'
+---
+
+## Overview
+
+Insert new lines into a Roblox script at a specific position without rewriting the entire source. Perfect for adding new functions, variables, or code blocks.
+
+<Info>
+**Line numbers are 1-indexed**. Use `afterLine: 0` to insert at the very beginning of the script. Always use the `numberedSource` field from `get_script_source` to identify correct line numbers.
+</Info>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path to the script using dot notation
+  
+  **Examples:**
+  - `game.ServerScriptService.MainScript`
+  - `game.StarterPlayer.StarterPlayerScripts.LocalScript`
+  - `game.ReplicatedStorage.Modules.DataManager`
+</ParamField>
+
+<ParamField path="afterLine" type="number" default={0}>
+  Insert after this line number (0-indexed for insertion position)
+  
+  - `0` = Insert at very beginning (before line 1)
+  - `1` = Insert after line 1 (becomes new line 2)
+  - `5` = Insert after line 5 (becomes new line 6)
+  
+  **Get from `numberedSource` field of `get_script_source`**
+</ParamField>
+
+<ParamField path="newContent" type="string" required>
+  Content to insert (can be multiple lines separated by `\n`)
+  
+  - Must include proper indentation
+  - Must be valid Lua syntax
+  - Each `\n` creates a new line
+</ParamField>
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "3 lines inserted after line 25",
+  "linesInserted": 3,
+  "insertionPoint": 25,
+  "totalLines": 158
+}
+```
+
+<ResponseField name="success" type="boolean">
+  Whether the operation completed successfully
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Status message describing the operation
+</ResponseField>
+
+<ResponseField name="linesInserted" type="number">
+  Number of lines added to the script
+</ResponseField>
+
+<ResponseField name="insertionPoint" type="number">
+  The line number after which content was inserted
+</ResponseField>
+
+<ResponseField name="totalLines" type="number">
+  Total lines in script after insertion
+</ResponseField>
+
+## Usage Examples
+
+### Insert at Beginning (afterLine: 0)
+
+**Before:**
+```lua
+1: local Players = game:GetService('Players')
+2: 
+3: print('Script started')
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.MainScript",
+  "afterLine": 0,
+  "newContent": "-- Main game script\n-- Version 2.0\n"
+}
+```
+
+**After:**
+```lua
+1: -- Main game script
+2: -- Version 2.0
+3: 
+4: local Players = game:GetService('Players')
+5: 
+6: print('Script started')
+```
+
+### Insert New Function After Existing Code
+
+**Before:**
+```lua
+10: local function playerJoined(player)
+11:     print('Welcome', player.Name)
+12: end
+13: 
+14: Players.PlayerAdded:Connect(playerJoined)
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.PlayerManager",
+  "afterLine": 12,
+  "newContent": "\nlocal function playerLeft(player)\n    print('Goodbye', player.Name)\nend"
+}
+```
+
+**After:**
+```lua
+10: local function playerJoined(player)
+11:     print('Welcome', player.Name)
+12: end
+13: 
+14: local function playerLeft(player)
+15:     print('Goodbye', player.Name)
+16: end
+17: 
+18: Players.PlayerAdded:Connect(playerJoined)
+```
+
+### Insert Variable Declarations
+
+**Before:**
+```lua
+5: local Players = game:GetService('Players')
+6: 
+7: local function init()
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.Config",
+  "afterLine": 5,
+  "newContent": "local ReplicatedStorage = game:GetService('ReplicatedStorage')\nlocal ServerStorage = game:GetService('ServerStorage')"
+}
+```
+
+**After:**
+```lua
+5: local Players = game:GetService('Players')
+6: local ReplicatedStorage = game:GetService('ReplicatedStorage')
+7: local ServerStorage = game:GetService('ServerStorage')
+8: 
+9: local function init()
+```
+
+### Insert Code Inside Function
+
+**Before:**
+```lua
+20: local function processData(data)
+21:     -- Process the data
+22:     return data
+23: end
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.DataHandler",
+  "afterLine": 21,
+  "newContent": "    if not data then return nil end\n    data = sanitizeData(data)"
+}
+```
+
+**After:**
+```lua
+20: local function processData(data)
+21:     -- Process the data
+22:     if not data then return nil end
+23:     data = sanitizeData(data)
+24:     return data
+25: end
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Read Before Inserting">
+    **Step 1:** Call `get_script_source` to see current structure
+    ```json
+    {"instancePath": "game.ServerScriptService.Script"}
+    ```
+    
+    **Step 2:** Identify insertion point from `numberedSource`:
+    ```
+    10: local Players = game:GetService('Players')
+    11: 
+    12: local function init()
+    ```
+    
+    **Step 3:** Insert after the appropriate line:
+    ```json
+    {
+      "instancePath": "game.ServerScriptService.Script",
+      "afterLine": 10,
+      "newContent": "local ReplicatedStorage = game:GetService('ReplicatedStorage')"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Match Indentation of Surrounding Code">
+    Ensure inserted code has correct indentation:
+    
+    ```lua
+    -- Root level: no indentation
+    local variable = true
+    
+    function example()
+        -- Inside function: 4 spaces
+        if condition then
+            -- Inside if: 8 spaces
+            print('Hello')
+        end
+    end
+    ```
+    
+    When inserting inside a function:
+    ```json
+    {
+      "afterLine": 15,
+      "newContent": "    print('Indented with 4 spaces')"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Add Blank Lines for Readability">
+    Include blank lines to maintain code structure:
+    
+    ```json Good: Includes spacing
+    {
+      "afterLine": 20,
+      "newContent": "\nlocal function newFunction()\n    return true\nend\n"
+    }
+    ```
+    
+    This creates:
+    ```lua
+    21: 
+    22: local function newFunction()
+    23:     return true
+    24: end
+    25: 
+    ```
+  </Accordion>
+
+  <Accordion title="Insert Multiple Lines with \\n">
+    Use `\n` to separate lines in the content:
+    
+    ```json
+    {
+      "afterLine": 10,
+      "newContent": "local var1 = 1\nlocal var2 = 2\nlocal var3 = 3"
+    }
+    ```
+    
+    This inserts 3 lines after line 10.
+  </Accordion>
+
+  <Accordion title="Insert at Beginning vs After Line 1">
+    - `afterLine: 0` → Insert before line 1 (at very beginning)
+    - `afterLine: 1` → Insert after line 1 (becomes new line 2)
+    
+    ```json Insert at beginning
+    {"afterLine": 0, "newContent": "-- Header comment"}
+    ```
+    
+    ```json Insert after first line
+    {"afterLine": 1, "newContent": "-- After first line"}
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Add New Function at End
+
+```json Get total line count first
+{"instancePath": "game.ServerScriptService.Utils"}
+// Response: {"lineCount": 50}
+```
+
+```json Insert after last line
+{
+  "instancePath": "game.ServerScriptService.Utils",
+  "afterLine": 50,
+  "newContent": "\nlocal function newHelper()\n    return 'new'\nend"
+}
+```
+
+### Add Service Imports at Top
+
+```json Insert after initial comments
+{
+  "instancePath": "game.ServerScriptService.Main",
+  "afterLine": 3,
+  "newContent": "\nlocal HttpService = game:GetService('HttpService')\nlocal DataStoreService = game:GetService('DataStoreService')"
+}
+```
+
+### Add Debug Logging
+
+```json Insert debugging code
+{
+  "instancePath": "game.ServerScriptService.GameLoop",
+  "afterLine": 25,
+  "newContent": "    print('DEBUG: Value is', value)\n    warn('DEBUG: Type is', typeof(value))"
+}
+```
+
+### Add Event Connection
+
+```json Insert new event handler
+{
+  "instancePath": "game.ServerScriptService.Events",
+  "afterLine": 40,
+  "newContent": "\nRemoteEvent.OnServerEvent:Connect(function(player, data)\n    print('Received data from', player.Name)\nend)"
+}
+```
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="get_script_source" icon="file-code" href="/api/script-editing/get-script-source">
+    Read script with line numbers
+  </Card>
+  <Card title="set_script_source" icon="arrows-rotate" href="/api/script-editing/set-script-source">
+    Replace entire script
+  </Card>
+  <Card title="edit_script_lines" icon="pen-to-square" href="/api/script-editing/edit-script-lines">
+    Replace specific line ranges
+  </Card>
+  <Card title="delete_script_lines" icon="trash" href="/api/script-editing/delete-script-lines">
+    Delete line ranges
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+<ResponseExample>
+```json Error: Line Out of Bounds
+{
+  "error": "afterLine exceeds script length",
+  "afterLine": 150,
+  "totalLines": 100
+}
+```
+
+```json Error: Invalid Content
+{
+  "error": "newContent must be a string",
+  "received": "number"
+}
+```
+
+```json Error: Empty Content
+{
+  "error": "newContent cannot be empty",
+  "instancePath": "game.ServerScriptService.Script"
+}
+```
+</ResponseExample>
+
+## Complete Workflow Example
+
+```json Step 1: Read to find insertion point
+{
+  "name": "get_script_source",
+  "arguments": {
+    "instancePath": "game.ServerScriptService.PlayerManager"
+  }
+}
+```
+
+```text Step 2: Analyze structure
+15: -- Existing functions
+16: local function onJoin(player)
+17:     print('Joined')
+18: end
+19: 
+20: -- Event connections
+```
+
+```json Step 3: Insert new function after line 18
+{
+  "name": "insert_script_lines",
+  "arguments": {
+    "instancePath": "game.ServerScriptService.PlayerManager",
+    "afterLine": 18,
+    "newContent": "\nlocal function onLeave(player)\n    print('Left')\nend"
+  }
+}
+```
+
+```lua Step 4: Result
+15: -- Existing functions
+16: local function onJoin(player)
+17:     print('Joined')
+18: end
+19: 
+20: local function onLeave(player)
+21:     print('Left')
+22: end
+23: 
+24: -- Event connections
+```

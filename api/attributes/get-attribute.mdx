@@ -1,0 +1,94 @@
+---
+title: Get Attribute
+description: Get a single attribute value from a Roblox instance
+---
+
+# Get Attribute
+
+Retrieve a specific attribute value from a Roblox instance. Attributes are custom data values that can be attached to any instance in Roblox Studio.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`, `"game.ServerStorage.DataStore"`)
+</ParamField>
+
+<ParamField path="attributeName" type="string" required>
+  Name of the attribute to retrieve
+</ParamField>
+
+## Response
+
+Returns the attribute value. The return type depends on the attribute's data type:
+- String attributes return `string`
+- Number attributes return `number`
+- Boolean attributes return `boolean`
+- Vector3 attributes return `{X: number, Y: number, Z: number}`
+- Color3 attributes return `{R: number, G: number, B: number}`
+- Returns `null` if the attribute doesn't exist
+
+## Supported Attribute Types
+
+Roblox supports these attribute data types:
+- **Primitives**: string, number, boolean
+- **Vectors**: Vector3, Vector2, UDim, UDim2
+- **Colors**: Color3, BrickColor
+- **Special**: NumberRange, Rect
+
+## Example Usage
+
+```javascript
+// Get a simple attribute
+get_attribute("game.Workspace.Sword", "Damage")
+// Returns: { "value": 50 }
+
+// Get a Vector3 attribute
+get_attribute("game.Workspace.SpawnPoint", "SpawnOffset")
+// Returns: { "value": { "X": 0, "Y": 5, "Z": 10 } }
+
+// Get a boolean attribute
+get_attribute("game.Workspace.Door", "IsLocked")
+// Returns: { "value": true }
+```
+
+## Use Cases
+
+### Game Configuration
+Store gameplay values like damage, health, speed multipliers, or cooldown timers on weapon/character instances.
+
+### Level Design
+Mark spawn points, checkpoints, or trigger zones with attributes for position offsets or activation states.
+
+### Data Persistence
+Read configuration attributes before saving player data or loading game state.
+
+### AI-Driven Gameplay
+Retrieve AI behavior parameters (aggression level, patrol radius) stored as attributes.
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Returns `null` if attribute doesn't exist (this is not an error)
+- Throws error if instance doesn't support attributes (rare edge case)
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Set Attribute" icon="pen" href="/api/attributes/set-attribute">
+    Set or update an attribute value
+  </Card>
+  <Card title="Get Attributes" icon="list" href="/api/attributes/get-attributes">
+    Get all attributes on an instance
+  </Card>
+  <Card title="Delete Attribute" icon="trash" href="/api/attributes/delete-attribute">
+    Remove an attribute from an instance
+  </Card>
+</CardGroup>
+
+## Notes
+
+- Attributes are replicated from server to client automatically
+- Attribute changes fire `AttributeChanged` signal in Lua
+- Attributes are visible in Studio's Properties panel under "Attributes" section
+- Maximum attribute name length: 100 characters
+- Attributes are saved with the game file (.rbxl/.rbxlx)

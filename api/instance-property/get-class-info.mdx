@@ -1,0 +1,362 @@
+---
+title: 'Get Class Info'
+description: 'Retrieve available properties and methods for Roblox classes'
+---
+
+## Overview
+
+The `get_class_info` tool provides metadata about Roblox classes, including their available properties, methods, events, and inheritance hierarchy. This is essential for understanding what you can do with different instance types.
+
+<Note>
+  This tool queries the Roblox API to provide comprehensive class information, including inherited properties from parent classes.
+</Note>
+
+## Parameters
+
+<ParamField path="className" type="string" required>
+  Name of the Roblox class to query.
+  
+  **Common classes:**
+  - `Part` - 3D physical objects
+  - `Script` - Server-side Lua scripts
+  - `LocalScript` - Client-side Lua scripts
+  - `ModuleScript` - Reusable Lua modules
+  - `Model` - Container for multiple parts
+  - `Folder` - Organizational container
+  - `ScreenGui` - UI container
+  - `Frame` - UI frame element
+  - `TextButton` - Clickable UI button
+</ParamField>
+
+## Response Format
+
+<ResponseField name="classInfo" type="object">
+  Complete class metadata.
+  
+  <ResponseField name="className" type="string">
+    The class name
+  </ResponseField>
+  
+  <ResponseField name="superClass" type="string">
+    Parent class in the inheritance hierarchy
+  </ResponseField>
+  
+  <ResponseField name="properties" type="array">
+    List of available properties
+    
+    <ResponseField name="name" type="string">
+      Property name
+    </ResponseField>
+    
+    <ResponseField name="valueType" type="string">
+      Data type (e.g., "string", "Vector3", "boolean")
+    </ResponseField>
+    
+    <ResponseField name="category" type="string">
+      Property category (e.g., "Data", "Appearance", "Behavior")
+    </ResponseField>
+    
+    <ResponseField name="readOnly" type="boolean">
+      Whether the property is read-only
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="methods" type="array">
+    List of available methods
+    
+    <ResponseField name="name" type="string">
+      Method name
+    </ResponseField>
+    
+    <ResponseField name="parameters" type="array">
+      Method parameters
+    </ResponseField>
+    
+    <ResponseField name="returnType" type="string">
+      Return type
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="events" type="array">
+    List of available events
+    
+    <ResponseField name="name" type="string">
+      Event name
+    </ResponseField>
+    
+    <ResponseField name="parameters" type="array">
+      Event parameters
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+## Code Examples
+
+### Get Part Class Info
+
+```typescript
+// Get comprehensive info about the Part class
+const partInfo = await callTool('get_class_info', {
+  className: 'Part'
+});
+
+console.log('Part inherits from:', partInfo.classInfo.superClass);
+console.log('Available properties:', partInfo.classInfo.properties.length);
+
+// List all properties
+partInfo.classInfo.properties.forEach(prop => {
+  console.log(`- ${prop.name} (${prop.valueType})`);
+});
+```
+
+### Discover Script Properties
+
+```typescript
+// Learn what properties are available on Script instances
+const scriptInfo = await callTool('get_class_info', {
+  className: 'Script'
+});
+
+// Find editable properties
+const editableProps = scriptInfo.classInfo.properties.filter(p => !p.readOnly);
+console.log('Editable Script properties:');
+editableProps.forEach(prop => {
+  console.log(`- ${prop.name}: ${prop.valueType}`);
+});
+// Output:
+// - Disabled: boolean
+// - Source: string
+// - Name: string
+```
+
+### Explore UI Elements
+
+```typescript
+// Get info about TextButton class
+const buttonInfo = await callTool('get_class_info', {
+  className: 'TextButton'
+});
+
+console.log('TextButton events:');
+buttonInfo.classInfo.events.forEach(event => {
+  console.log(`- ${event.name}`);
+});
+// Output:
+// - MouseButton1Click
+// - MouseButton2Click
+// - MouseEnter
+// - MouseLeave
+```
+
+### Check Available Methods
+
+```typescript
+// Find methods available on Model class
+const modelInfo = await callTool('get_class_info', {
+  className: 'Model'
+});
+
+console.log('Model methods:');
+modelInfo.classInfo.methods.forEach(method => {
+  const params = method.parameters.map(p => p.name).join(', ');
+  console.log(`- ${method.name}(${params}): ${method.returnType}`);
+});
+```
+
+## Common Use Cases
+
+### 1. Property Discovery
+
+Find what properties you can set on an instance:
+
+```typescript
+const partInfo = await callTool('get_class_info', {
+  className: 'Part'
+});
+
+// Get all appearance-related properties
+const appearanceProps = partInfo.classInfo.properties.filter(p => 
+  p.category === 'Appearance'
+);
+
+console.log('Appearance properties:');
+appearanceProps.forEach(prop => {
+  console.log(`- ${prop.name}: ${prop.valueType}`);
+});
+```
+
+### 2. Validate Property Before Setting
+
+Check if a property exists before trying to modify it:
+
+```typescript
+const className = 'Part';
+const propertyName = 'Reflectance';
+
+const classInfo = await callTool('get_class_info', { className });
+const hasProperty = classInfo.classInfo.properties.some(p => p.name === propertyName);
+
+if (hasProperty) {
+  await callTool('set_property', {
+    instancePath: 'game.Workspace.MyPart',
+    propertyName: propertyName,
+    propertyValue: 0.5
+  });
+} else {
+  console.error(`${className} does not have property ${propertyName}`);
+}
+```
+
+### 3. Inheritance Chain Exploration
+
+Understand class hierarchy:
+
+```typescript
+async function getInheritanceChain(className) {
+  const chain = [className];
+  let currentClass = className;
+  
+  while (currentClass) {
+    const info = await callTool('get_class_info', { className: currentClass });
+    currentClass = info.classInfo.superClass;
+    if (currentClass) chain.push(currentClass);
+  }
+  
+  return chain;
+}
+
+const chain = await getInheritanceChain('Part');
+console.log('Inheritance chain:', chain.join(' -> '));
+// Output: Part -> BasePart -> PVInstance -> Instance
+```
+
+### 4. Generate Property Documentation
+
+Create property reference for your team:
+
+```typescript
+const classInfo = await callTool('get_class_info', {
+  className: 'TextButton'
+});
+
+console.log(`# ${classInfo.classInfo.className} Properties\n`);
+
+const categorized = {};
+classInfo.classInfo.properties.forEach(prop => {
+  if (!categorized[prop.category]) categorized[prop.category] = [];
+  categorized[prop.category].push(prop);
+});
+
+for (const [category, props] of Object.entries(categorized)) {
+  console.log(`\n## ${category}\n`);
+  props.forEach(prop => {
+    const readonly = prop.readOnly ? ' (read-only)' : '';
+    console.log(`- **${prop.name}** (${prop.valueType})${readonly}`);
+  });
+}
+```
+
+### 5. Find Events for Scripting
+
+Discover what events you can listen to:
+
+```typescript
+const classInfo = await callTool('get_class_info', {
+  className: 'Part'
+});
+
+console.log('Part events:');
+classInfo.classInfo.events.forEach(event => {
+  const params = event.parameters.map(p => `${p.name}: ${p.type}`).join(', ');
+  console.log(`- ${event.name}(${params})`);
+});
+// Output:
+// - Touched(otherPart: BasePart)
+// - TouchEnded(otherPart: BasePart)
+```
+
+### 6. Property Type Checking
+
+Understand what type of value a property expects:
+
+```typescript
+const partInfo = await callTool('get_class_info', {
+  className: 'Part'
+});
+
+const positionProp = partInfo.classInfo.properties.find(p => p.name === 'Position');
+console.log(`Position type: ${positionProp.valueType}`);
+// Output: Position type: Vector3
+
+const materialProp = partInfo.classInfo.properties.find(p => p.name === 'Material');
+console.log(`Material type: ${materialProp.valueType}`);
+// Output: Material type: Material (enum)
+```
+
+## Advanced Usage
+
+### Compare Classes
+
+```typescript
+// Compare Part vs MeshPart
+const partInfo = await callTool('get_class_info', { className: 'Part' });
+const meshPartInfo = await callTool('get_class_info', { className: 'MeshPart' });
+
+const partProps = new Set(partInfo.classInfo.properties.map(p => p.name));
+const meshPartProps = new Set(meshPartInfo.classInfo.properties.map(p => p.name));
+
+// Properties unique to MeshPart
+const uniqueToMeshPart = [...meshPartProps].filter(p => !partProps.has(p));
+console.log('Properties unique to MeshPart:', uniqueToMeshPart);
+```
+
+### Build Property Editor UI
+
+```typescript
+// Get properties to build a dynamic property editor
+const className = 'Part';
+const classInfo = await callTool('get_class_info', { className });
+
+const editableProps = classInfo.classInfo.properties.filter(p => !p.readOnly);
+
+editableProps.forEach(prop => {
+  // Generate UI field based on type
+  switch (prop.valueType) {
+    case 'boolean':
+      console.log(`[Checkbox] ${prop.name}`);
+      break;
+    case 'string':
+      console.log(`[Text Input] ${prop.name}`);
+      break;
+    case 'number':
+      console.log(`[Number Input] ${prop.name}`);
+      break;
+    case 'Vector3':
+      console.log(`[Vector3 Input] ${prop.name} (X, Y, Z)`);
+      break;
+    default:
+      console.log(`[${prop.valueType} Input] ${prop.name}`);
+  }
+});
+```
+
+## Notes
+
+<Info>
+  **Inherited properties**: The returned properties include those inherited from parent classes. For example, `Part` includes properties from `BasePart`, `PVInstance`, and `Instance`.
+</Info>
+
+<Tip>
+  **Read-only properties**: Many properties are read-only and cannot be set directly. Check the `readOnly` field before attempting to modify properties.
+</Tip>
+
+<Warning>
+  **API availability**: Some properties and methods may only be available in specific contexts (Studio vs. game, server vs. client). Check Roblox documentation for context-specific restrictions.
+</Warning>
+
+## Related Tools
+
+- **get_instance_properties** - Get current property values of an instance
+- **set_property** - Modify property values
+- **get_descendants** - Find instances of a specific class
+- **search_objects** - Find instances by class type

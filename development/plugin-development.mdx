@@ -1,0 +1,417 @@
+---
+title: Plugin Development
+description: Develop and debug the Roblox Studio plugin component
+---
+
+## Plugin Overview
+
+The Roblox Studio plugin is written in **Luau** and acts as the bridge between the MCP server and Studio APIs. It:
+
+- Polls the HTTP server for pending requests (long polling)
+- Executes Studio API calls
+- Returns results to the MCP server
+- Provides visual status indicators
+- Includes activity logging with export features
+
+## Plugin Location
+
+All plugin code is in the `studio-plugin/` directory:
+
+```
+studio-plugin/
+├── plugin.luau         # Main plugin source code (1,800+ lines)
+├── plugin.json         # Plugin metadata
+├── MCPPlugin.rbxmx     # Packaged plugin file
+└── INSTALLATION.md     # Installation instructions
+```
+
+## Live Reload Workflow
+
+For efficient plugin development:
+
+### Method 1: Save as Local Plugin
+
+1. **Open the plugin source**:
+   ```bash
+   code studio-plugin/plugin.luau
+   ```
+
+2. **In Roblox Studio**:
+   - Create a Script in ServerScriptService
+   - Copy the entire `plugin.luau` contents
+   - Paste into the Script
+   - Right-click → **"Save as Local Plugin..."**
+   - Name it "MCP Server Dev"
+
+3. **Edit and reload**:
+   - Make changes in your code editor
+   - Copy the updated code
+   - Paste into the Studio script
+   - Save as local plugin again (overwrites)
+   - Plugin reloads automatically
+
+### Method 2: Direct File Editing
+
+1. **Edit plugin.luau** in your preferred editor
+
+2. **Copy to Plugins folder**:
+   ```bash
+   # Windows
+   copy studio-plugin\plugin.luau %LOCALAPPDATA%\Roblox\Plugins\MCPPlugin.luau
+   
+   # macOS
+   cp studio-plugin/plugin.luau ~/Documents/Roblox/Plugins/MCPPlugin.luau
+   ```
+
+3. **Restart Studio** to load changes
+
+<Tip>
+  Method 1 is faster for rapid iteration since you don't need to restart Studio each time.
+</Tip>
+
+## Plugin Architecture
+
+### Core Components
+
+#### 1. Long Polling Loop
+
+The plugin uses long polling (not interval polling):
+
+```lua
+local function longPollLoop()
+    while pluginState.isActive do
+        local success, result = pcall(function()
+            return HttpService:RequestAsync({
+                Url = pluginState.serverUrl .. "/poll",
+                Method = "GET",
+            })
+        end)
+        
+        -- Server holds connection up to 25s
+        -- Returns immediately when request available
+        if success and result.Success then
+            local data = HttpService:JSONDecode(result.Body)
+            if data.request and data.mcpConnected then
+                local response = processRequest(data.request)
+                sendResponse(data.requestId, response)
+            end
+        end
+    end
+end
+```
+
+**Benefits of long polling:**
+- Instant response when AI makes a request
+- Lower CPU usage than interval polling
+- Reduced HTTP overhead
+
+#### 2. Request Processing
+
+Requests are routed to specific handlers:
+
+```lua
+processRequest = function(request)
+    local endpoint = request.endpoint
+    local data = request.data or {}
+    
+    if endpoint == "/api/file-tree" then
+        return handlers.getFileTree(data)
+    elseif endpoint == "/api/set-property" then
+        return handlers.setProperty(data)
+    -- ... 37+ endpoints
+    end
+end
+```
+
+#### 3. Response Sending
+
+```lua
+sendResponse = function(requestId, responseData)
+    HttpService:RequestAsync({
+        Url = pluginState.serverUrl .. "/response",
+        Method = "POST",
+        Body = HttpService:JSONEncode({
+            requestId = requestId,
+            response = responseData,
+        }),
+    })
+end
+```
+
+### UI Components
+
+The plugin includes a comprehensive dock widget:
+
+#### Connection Status
+- Real-time connection indicator (green/yellow/red)
+- Step-by-step status display:
+  - HTTP server reachable
+  - MCP bridge connected
+  - Ready for commands
+- Troubleshooting tips for common issues
+
+#### Activity Logger
+- Categorized logging (CONN, REQ, RESP, ERR, WARN)
+- Color-coded messages
+- Collapsible log panel
+- Copy to Output window
+- Export to ServerStorage
+
+## Error Handling Patterns
+
+### Safe API Calls
+
+Always wrap Studio API calls in pcall:
+
+```lua
+local function safeCall(func, ...)
+    local success, result = pcall(func, ...)
+    if success then
+        return result
+    else
+        warn("MCP Plugin Error: " .. tostring(result))
+        return nil
+    end
+end
+
+-- Usage
+local instance = safeCall(getInstanceByPath, path)
+if not instance then
+    return { error = "Instance not found: " .. path }
+end
+```
+
+### Property Type Conversion
+
+Handle JSON to Roblox type conversion:
+
+```lua
+local function convertPropertyValue(instance, propertyName, propertyValue)
+    -- Handle Vector3: {X: n, Y: n, Z: n}
+    if type(propertyValue) == "table" and propertyValue.X then
+        return Vector3.new(
+            propertyValue.X or 0,
+            propertyValue.Y or 0,
+            propertyValue.Z or 0
+        )
+    end
+    
+    -- Handle Color3: {R: n, G: n, B: n}
+    if type(propertyValue) == "table" and propertyValue.R then
+        return Color3.new(
+            propertyValue.R or 0,
+            propertyValue.G or 0,
+            propertyValue.B or 0
+        )
+    end
+    
+    -- Handle Enums
+    if type(propertyValue) == "string" then
+        local success, currentVal = pcall(function()
+            return instance[propertyName]
+        end)
+        if success and typeof(currentVal) == "EnumItem" then
+            local enumType = tostring(currentVal.EnumType)
+            return Enum[enumType][propertyValue]
+        end
+    end
+    
+    return propertyValue
+end
+```
+
+### Connection Retry Logic
+
+Exponential backoff for failed connections:
+
+```lua
+if not success then
+    pluginState.consecutiveFailures += 1
+    pluginState.currentRetryDelay = math.min(
+        pluginState.currentRetryDelay * 1.2,
+        pluginState.maxRetryDelay
+    )
+    task.wait(pluginState.currentRetryDelay)
+else
+    pluginState.consecutiveFailures = 0
+    pluginState.currentRetryDelay = 0.5
+end
+```
+
+## Debug Logging
+
+The plugin includes a comprehensive activity logger:
+
+```lua
+local LOG_CATEGORIES = {
+    CONNECTION = { color = Color3.fromRGB(59, 130, 246),  label = "CONN" },
+    POLL       = { color = Color3.fromRGB(107, 114, 128), label = "POLL" },
+    REQUEST    = { color = Color3.fromRGB(6, 182, 212),   label = "REQ"  },
+    RESPONSE   = { color = Color3.fromRGB(34, 197, 94),   label = "RESP" },
+    ERROR      = { color = Color3.fromRGB(239, 68, 68),   label = "ERR"  },
+    WARN       = { color = Color3.fromRGB(245, 158, 11),  label = "WARN" },
+}
+
+addLog("REQUEST", "Received: get_file_tree")
+addLog("RESPONSE", "get_file_tree completed in 45ms")
+addLog("ERROR", "Failed to set property: Instance not found")
+```
+
+### View Logs
+
+**In the plugin widget:**
+- Scroll through color-coded log entries
+- Each entry shows timestamp, category, and message
+
+**Copy to Output:**
+- Click the "C" button to copy all logs
+- Logs are printed to Studio Output window
+- Easy to copy/paste for debugging
+
+**Export to ServerStorage:**
+- Click the "E" button to export
+- Creates `ServerStorage.MCPActivityLog` StringValue
+- Contains full log history
+
+## Testing with Local MCP Server
+
+### Setup
+
+1. **Start the MCP server**:
+   ```bash
+   npm run dev
+   ```
+
+2. **Enable HTTP in Studio**:
+   - Game Settings → Security
+   - Check "Allow HTTP Requests"
+
+3. **Activate the plugin**:
+   - Click "MCP Server" button in toolbar
+   - Status should show "Connected (Long Poll)"
+
+### Test Endpoints
+
+Use the MCP server's HTTP API directly:
+
+```bash
+# Test file tree endpoint
+curl -X POST http://localhost:3002/api/file-tree \
+  -H "Content-Type: application/json" \
+  -d '{"path":"game.Workspace"}'
+
+# Test property setting
+curl -X POST http://localhost:3002/api/set-property \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instancePath":"game.Workspace.Part",
+    "propertyName":"Color",
+    "propertyValue":{"R":1,"G":0,"B":0}
+  }'
+```
+
+### Debug Workflow
+
+1. **Add debug logging** in plugin code:
+   ```lua
+   addLog("WARN", "Debug: propertyValue type = " .. type(propertyValue))
+   ```
+
+2. **Reload the plugin** (save as local plugin)
+
+3. **Trigger the action** from AI or curl
+
+4. **Check the activity log** in plugin widget
+
+5. **Check Studio Output** window for warnings/errors
+
+## Common Plugin Issues
+
+### HTTP 403 Forbidden
+
+**Cause:** HTTP requests not enabled
+
+**Fix:**
+- Game Settings → Security
+- Enable "Allow HTTP Requests"
+
+### Plugin Shows "Waiting for MCP server"
+
+**Cause:** MCP server not running or not connected
+
+**Fix:**
+```bash
+# Start the MCP server
+npm run dev
+
+# Or restart if already running
+pkill node
+npm run dev
+```
+
+### Connection Stuck on "HTTP OK, MCP: ..."
+
+**Cause:** Stale node.exe process holding the connection
+
+**Fix:**
+```bash
+# Windows
+taskkill /F /IM node.exe
+
+# macOS/Linux
+pkill node
+
+# Then restart
+npm run dev
+```
+
+### Vector3 Properties Not Working
+
+**Issue:** Setting Vector3 as string like "1, 2, 3" fails
+
+**Fix:** Use object format:
+```json
+{
+  "propertyValue": {"X": 1, "Y": 2, "Z": 3}
+}
+```
+
+## Building the Plugin Package
+
+To create `MCPPlugin.rbxmx`:
+
+1. **In Roblox Studio**:
+   - Create a Script with the plugin code
+   - Right-click → "Save as Local Plugin..."
+   - Name it "MCPPlugin"
+
+2. **Export as .rbxmx**:
+   - Right-click the plugin in Explorer
+   - "Save to File..."
+   - Save as `MCPPlugin.rbxmx`
+
+3. **Copy to repository**:
+   ```bash
+   cp ~/Downloads/MCPPlugin.rbxmx studio-plugin/
+   ```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="code" href="/development/setup">
+    Set up your development environment
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Learn about testing strategies
+  </Card>
+</CardGroup>
+
+## Plugin Best Practices
+
+1. **Always use pcall** for Studio API calls
+2. **Log errors** to help debug issues
+3. **Handle nil values** gracefully
+4. **Validate inputs** before processing
+5. **Use exponential backoff** for retries
+6. **Provide clear status messages** to users
+7. **Test with real AI workflows** before releasing

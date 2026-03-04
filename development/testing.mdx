@@ -1,0 +1,318 @@
+---
+title: Testing
+description: Run tests to ensure code quality and reliability
+---
+
+## Testing Overview
+
+Roblox Studio MCP uses a comprehensive testing strategy:
+
+- **Jest Unit Tests** - 32 tests covering core services and integration
+- **Lune E2E Tests** - 30 tests verifying HTTP endpoints work correctly
+- Full feature parity testing between stdio MCP and HTTP modes
+
+## Unit Tests (Jest)
+
+### Run All Unit Tests
+
+Execute the Jest test suite:
+
+```bash
+npm test
+```
+
+This runs all unit tests and displays results in the terminal.
+
+### Watch Mode
+
+Run tests in watch mode for active development:
+
+```bash
+npm run test:watch
+```
+
+Watch mode:
+- Re-runs tests when files change
+- Only runs tests related to changed files
+- Interactive mode with filtering options
+
+### Coverage Report
+
+Generate a test coverage report:
+
+```bash
+npm run test:coverage
+```
+
+This creates a coverage report showing:
+- Line coverage percentage
+- Branch coverage
+- Function coverage
+- Uncovered lines
+
+Coverage reports are output to `coverage/` directory.
+
+### What Unit Tests Cover
+
+Jest tests validate:
+
+#### Bridge Service (`bridge-service.ts`)
+- Request queue management
+- UUID-based request tracking
+- Promise resolution/rejection
+- Timeout handling (30 second default)
+- Request deduplication
+
+#### HTTP Server (`http-server.ts`)
+- Express server initialization
+- CORS configuration
+- GET `/poll` endpoint (long polling)
+- POST `/response` endpoint
+- Error handling and status codes
+- JSON request/response parsing
+
+#### Integration Tests
+- End-to-end request/response flow
+- MCP tool execution
+- Studio plugin communication
+- Error propagation
+
+## E2E Tests (Lune)
+
+### Prerequisites
+
+E2E tests require:
+
+1. **Lune** runtime installed (Luau execution environment)
+2. **MCP server running** on localhost:3002
+
+### Run E2E Tests
+
+Start the MCP server first:
+
+```bash
+# Terminal 1: Start the server
+npm run dev
+```
+
+Then run E2E tests:
+
+```bash
+# Terminal 2: Run E2E tests
+npm run test:e2e
+```
+
+### What E2E Tests Cover
+
+Lune E2E tests verify all 37+ HTTP endpoints:
+
+#### File System Tools
+- `/api/file-tree` - Complete hierarchy retrieval
+- `/api/search-files` - File search by name/type/content
+
+#### Studio Context Tools
+- `/api/place-info` - Place metadata
+- `/api/services` - Roblox services listing
+- `/api/search-objects` - Instance searching
+- `/api/get-selection` - Current Studio selection
+
+#### Property Tools
+- `/api/instance-properties` - Property retrieval
+- `/api/set-property` - Single property modification
+- `/api/mass-set-property` - Bulk property updates
+- `/api/mass-get-property` - Bulk property reads
+- `/api/set-calculated-property` - Formula-based properties
+- `/api/set-relative-property` - Relative modifications
+
+#### Object Creation Tools
+- `/api/create-object` - Single object creation
+- `/api/mass-create-objects` - Bulk creation
+- `/api/mass-create-objects-with-properties` - Bulk with properties
+- `/api/delete-object` - Object deletion
+- `/api/smart-duplicate` - Advanced duplication
+- `/api/mass-duplicate` - Bulk duplication
+
+#### Script Tools
+- `/api/get-script-source` - Read script code
+- `/api/set-script-source` - Replace script
+- `/api/edit-script-lines` - Edit specific lines
+- `/api/insert-script-lines` - Insert new lines
+- `/api/delete-script-lines` - Delete lines
+
+#### Attribute & Tag Tools
+- `/api/get-attribute` - Single attribute
+- `/api/set-attribute` - Set attribute (supports Vector3, Color3)
+- `/api/get-attributes` - All attributes
+- `/api/delete-attribute` - Remove attribute
+- `/api/get-tags` - Instance tags
+- `/api/add-tag` - Add tag
+- `/api/remove-tag` - Remove tag
+- `/api/get-tagged` - Find by tag
+
+#### Advanced Tools (v2.0.0)
+- `/api/reparent-object` - Move objects
+- `/api/clone-object` - Clone instances
+- `/api/get-descendants` - Recursive children
+- `/api/batch-operations` - Multiple operations
+- `/api/undo` / `/api/redo` - History management
+- `/api/group-objects` / `/api/ungroup-objects` - Grouping
+- `/api/get-bounding-box` - Spatial calculations
+- `/api/create-weld` - Weld creation
+- `/api/raycast` - Raycasting
+- `/api/fill-terrain` / `/api/clear-terrain` - Terrain
+- `/api/execute-lua` - Execute Lua code
+- `/api/set-selection` - Modify Studio selection
+- `/api/mass-reparent` - Bulk reparenting
+
+## Run All Tests
+
+Execute both unit and E2E tests:
+
+```bash
+npm run test:all
+```
+
+This runs:
+1. Jest unit tests first
+2. Then Lune E2E tests (if server is running)
+
+<Warning>
+  Make sure the MCP server is running before executing `test:all`, otherwise E2E tests will fail.
+</Warning>
+
+## Writing Tests
+
+### Unit Test Example
+
+Create tests in `__tests__/` or `*.test.ts` files:
+
+```typescript
+import { BridgeService } from '../src/bridge-service';
+
+describe('BridgeService', () => {
+  let bridge: BridgeService;
+
+  beforeEach(() => {
+    bridge = new BridgeService();
+  });
+
+  test('should queue requests', async () => {
+    const promise = bridge.queueRequest('/api/test', {});
+    expect(bridge.hasPendingRequests()).toBe(true);
+  });
+
+  test('should resolve requests', async () => {
+    const promise = bridge.queueRequest('/api/test', { foo: 'bar' });
+    const pending = bridge.getPendingRequest();
+    
+    bridge.resolveRequest(pending.id, { success: true });
+    const result = await promise;
+    
+    expect(result).toEqual({ success: true });
+  });
+});
+```
+
+### E2E Test Example
+
+Create Lune scripts in `tests/luau/`:
+
+```lua
+local HttpService = require("@lune/net")
+
+local function testEndpoint()
+    local response = HttpService.request({
+        url = "http://localhost:3002/api/services",
+        method = "POST",
+        headers = { ["Content-Type"] = "application/json" },
+        body = HttpService.jsonEncode({})
+    })
+    
+    assert(response.ok, "Request failed")
+    local data = HttpService.jsonDecode(response.body)
+    assert(data.services ~= nil, "Services missing")
+    
+    print("✓ Services endpoint working")
+end
+
+testEndpoint()
+```
+
+## Test Best Practices
+
+### Unit Testing
+
+1. **Test one thing at a time** - Each test should validate a single behavior
+2. **Use descriptive names** - Test names should explain what they validate
+3. **Mock external dependencies** - Isolate the code under test
+4. **Test edge cases** - Include error conditions and boundary cases
+5. **Keep tests fast** - Unit tests should run in milliseconds
+
+### E2E Testing
+
+1. **Test real workflows** - Simulate actual usage patterns
+2. **Validate responses** - Check structure and data types
+3. **Handle timing** - Account for async operations
+4. **Clean up** - Remove test objects after tests
+5. **Document setup** - Explain prerequisites clearly
+
+## Continuous Integration
+
+When setting up CI/CD:
+
+```yaml
+# Example GitHub Actions workflow
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:coverage
+```
+
+## Debugging Tests
+
+### Debug Jest Tests
+
+Run with verbose output:
+
+```bash
+npm test -- --verbose
+```
+
+Debug specific test file:
+
+```bash
+npm test -- bridge-service.test.ts
+```
+
+### Debug E2E Tests
+
+Add debug output in Lune scripts:
+
+```lua
+print("Request:", HttpService.jsonEncode(requestBody))
+print("Response:", response.body)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="code" href="/development/setup">
+    Set up your development environment
+  </Card>
+  <Card title="Plugin Development" icon="plug" href="/development/plugin-development">
+    Work on the Studio plugin
+  </Card>
+</CardGroup>

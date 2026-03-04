@@ -1,0 +1,322 @@
+---
+title: 'get_project_structure'
+description: 'Get complete game hierarchy with smart depth control and filtering'
+---
+
+## Overview
+
+The `get_project_structure` tool provides intelligent hierarchy generation for your Roblox game project. This key tool generates a complete structural overview with configurable depth exploration and optional script-only filtering.
+
+<Note>
+**Performance Tip:** Use `maxDepth` values between 5-10 for comprehensive exploration. The default depth of 3 may not reveal deeper nested structures.
+</Note>
+
+## Parameters
+
+<ParamField path="path" type="string" default="">
+  Optional path to start exploration from using dot notation (e.g., `game.Workspace`, `game.ServerStorage.Weapons`).
+  
+  - Defaults to workspace root if empty
+  - Supports full Roblox instance paths
+  - Enables focused exploration of specific areas
+</ParamField>
+
+<ParamField path="maxDepth" type="number" default="3">
+  Maximum depth to traverse the hierarchy. **RECOMMENDED: Use 5-10 for thorough exploration.**
+  
+  - Default: 3 (may be too shallow for complex projects)
+  - Recommended: 5-10 for comprehensive structure analysis
+  - Higher values provide more complete structure but take longer to process
+  - Critical for discovering deeply nested components
+</ParamField>
+
+<ParamField path="scriptsOnly" type="boolean" default="false">
+  Filter flag to show only scripts and script containers.
+  
+  - `true`: Returns only Script, LocalScript, ModuleScript, and their parent containers
+  - `false`: Returns complete hierarchy including all instance types
+  - Useful for code analysis and script dependency mapping
+</ParamField>
+
+## Service Overview
+
+When called without a path, `get_project_structure` returns a comprehensive service overview:
+
+- Lists all major Roblox services (Workspace, ServerScriptService, ReplicatedStorage, etc.)
+- Shows child counts for each service
+- Provides high-level project organization view
+- Helps identify where different components are located
+
+## Path-Based Exploration
+
+Target specific areas of your project by providing a path:
+
+```javascript
+// Explore weapons folder with depth 5
+get_project_structure("game.ServerStorage.Weapons", maxDepth=5)
+
+// Analyze UI structure
+get_project_structure("game.StarterGui.MainMenu", maxDepth=7)
+
+// Check server scripts organization
+get_project_structure("game.ServerScriptService", maxDepth=6)
+```
+
+## Script-Only Filtering
+
+Enable `scriptsOnly` to focus exclusively on code structure:
+
+```javascript
+// Find all scripts in the project
+get_project_structure(scriptsOnly=true, maxDepth=10)
+
+// Analyze script organization in a specific service
+get_project_structure("game.ServerScriptService", scriptsOnly=true, maxDepth=8)
+```
+
+This mode:
+- Shows Script, LocalScript, and ModuleScript instances
+- Includes parent folders/containers for context
+- Excludes non-script instances (Parts, Models, etc.)
+- Perfect for understanding code architecture
+
+## Rich Metadata
+
+The tool returns comprehensive metadata for each instance:
+
+### Script Status
+- **Enabled/Disabled**: Indicates if scripts are active
+- **Source length**: Character count of script code
+- **Script type**: Identifies Script, LocalScript, or ModuleScript
+
+### GUI Intelligence
+- **UI element types**: Identifies ScreenGui, Frame, TextLabel, etc.
+- **UI hierarchy**: Shows parent-child relationships in interfaces
+- **Layout structure**: Reveals UI organization patterns
+
+### General Instance Data
+- **ClassName**: Roblox instance type (Part, Folder, Script, etc.)
+- **Name**: Instance name
+- **Path**: Full dot-notation path for reference
+- **Children count**: Number of child instances
+- **Properties**: Key properties relevant to instance type
+
+## Performance Considerations
+
+### Depth Selection Strategy
+
+<CodeGroup>
+
+```javascript Default (Quick Overview)
+// maxDepth=3 (default) - Fast but may miss deep structures
+get_project_structure()
+```
+
+```javascript Recommended (Thorough)
+// maxDepth=5-7 - Balanced depth for most projects
+get_project_structure(maxDepth=6)
+```
+
+```javascript Deep Analysis
+// maxDepth=8-10 - Comprehensive for complex hierarchies
+get_project_structure("game.Workspace.ComplexModel", maxDepth=10)
+```
+
+</CodeGroup>
+
+### Optimization Tips
+
+1. **Use path filtering**: Target specific areas instead of scanning entire project
+2. **Enable scriptsOnly when appropriate**: Dramatically reduces data for code analysis
+3. **Start with lower depth**: Increase gradually if needed
+4. **Combine with other tools**: Use with `search_objects` or `get_instance_children` for focused queries
+
+## Response Format
+
+Returns a hierarchical JSON structure:
+
+```json
+{
+  "structure": {
+    "name": "game",
+    "className": "DataModel",
+    "path": "game",
+    "children": [
+      {
+        "name": "Workspace",
+        "className": "Workspace",
+        "path": "game.Workspace",
+        "childCount": 42,
+        "children": [...]
+      },
+      {
+        "name": "ServerScriptService",
+        "className": "ServerScriptService",
+        "path": "game.ServerScriptService",
+        "childCount": 15,
+        "children": [...]
+      }
+    ]
+  },
+  "metadata": {
+    "maxDepth": 5,
+    "scriptsOnly": false,
+    "totalInstances": 287
+  }
+}
+```
+
+## Usage Examples
+
+### Example 1: Project Overview
+
+Get a high-level view of your entire project:
+
+```javascript
+get_project_structure(maxDepth=5)
+```
+
+**Use case**: Understanding overall project organization, identifying main services and their structure.
+
+### Example 2: Deep Dive into Specific Area
+
+Analyze a complex model or system:
+
+```javascript
+get_project_structure("game.ReplicatedStorage.GameSystems", maxDepth=10)
+```
+
+**Use case**: Examining intricate nested structures like combat systems, inventory systems, or complex models.
+
+### Example 3: Script Architecture Analysis
+
+Map all scripts in your project:
+
+```javascript
+get_project_structure(scriptsOnly=true, maxDepth=8)
+```
+
+**Use case**: Code review, dependency analysis, identifying unused scripts, understanding code organization.
+
+### Example 4: UI Structure Exploration
+
+Examine user interface hierarchy:
+
+```javascript
+get_project_structure("game.StarterGui", maxDepth=7)
+```
+
+**Use case**: UI debugging, layout analysis, understanding GUI component relationships.
+
+### Example 5: Workspace Organization
+
+Review workspace contents with moderate depth:
+
+```javascript
+get_project_structure("game.Workspace", maxDepth=6)
+```
+
+**Use case**: Level design review, asset organization, identifying misplaced objects.
+
+## Common Patterns
+
+### Progressive Exploration
+
+Start shallow, then go deeper:
+
+```javascript
+// Step 1: Overview
+get_project_structure(maxDepth=3)
+
+// Step 2: Identify interesting area
+// Suppose you see ServerStorage.Weapons
+
+// Step 3: Deep dive
+get_project_structure("game.ServerStorage.Weapons", maxDepth=10)
+```
+
+### Combined with Search
+
+Use structure analysis to inform targeted searches:
+
+```javascript
+// 1. Find where scripts are concentrated
+get_project_structure(scriptsOnly=true, maxDepth=5)
+
+// 2. Search for specific script by name
+search_files("MainController", searchType="name")
+
+// 3. Get detailed properties
+get_instance_properties("game.ServerScriptService.MainController")
+```
+
+## Related Tools
+
+- **get_file_tree**: Alternative hierarchy view with different formatting
+- **search_objects**: Find specific instances by name or class
+- **get_instance_children**: Get immediate children of a specific instance
+- **search_files**: Search by name, type, or script content
+- **get_services**: List all available Roblox services
+
+## Best Practices
+
+1. **Always specify maxDepth for complex projects**: Default of 3 is often insufficient
+2. **Use path parameter to focus exploration**: Avoid scanning entire project when targeting specific areas
+3. **Enable scriptsOnly for code analysis**: Significantly reduces noise when reviewing code structure
+4. **Start with service overview**: Call without parameters first to understand project organization
+5. **Combine with other tools**: Use alongside search and property tools for comprehensive analysis
+6. **Monitor performance**: Very deep hierarchies (maxDepth > 10) may take longer to process
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Structure seems incomplete">
+    Increase `maxDepth` parameter. Default value of 3 may not reach deeper nested instances. Try values between 5-10.
+  </Accordion>
+  
+  <Accordion title="Too much data returned">
+    - Use `path` parameter to focus on specific areas
+    - Enable `scriptsOnly` if analyzing code structure
+    - Reduce `maxDepth` to limit traversal
+  </Accordion>
+  
+  <Accordion title="Can't find specific instances">
+    - Ensure `maxDepth` is high enough to reach them
+    - Verify path parameter is correct (use dot notation)
+    - Consider using `search_objects` for targeted queries
+  </Accordion>
+  
+  <Accordion title="Scripts not showing up">
+    Check that scripts aren't disabled or archived. Use `scriptsOnly=true` to filter for script instances only.
+  </Accordion>
+</AccordionGroup>
+
+## Technical Details
+
+### HTTP Endpoint
+
+When using HTTP mode, this tool maps to:
+
+```
+POST http://localhost:3002/api/project-structure
+```
+
+### Request Body
+
+```json
+{
+  "path": "game.Workspace",
+  "maxDepth": 7,
+  "scriptsOnly": false
+}
+```
+
+### Plugin Implementation
+
+The Studio plugin executes this tool by:
+1. Resolving the starting path (defaults to game root)
+2. Recursively traversing children up to maxDepth
+3. Applying scriptsOnly filter if enabled
+4. Collecting metadata for each instance
+5. Building hierarchical JSON structure
+6. Returning complete structure to MCP server

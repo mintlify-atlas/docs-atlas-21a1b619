@@ -1,0 +1,282 @@
+---
+title: Get Tagged
+description: Find all Roblox instances with a specific CollectionService tag
+---
+
+# Get Tagged
+
+Find all instances in the game that have a specific CollectionService tag. This is the most efficient way to query instances by category.
+
+## Parameters
+
+<ParamField path="tagName" type="string" required>
+  Name of the tag to search for (case-sensitive)
+</ParamField>
+
+## Response
+
+Returns an array of instance paths:
+```json
+{
+  "instances": [
+    "game.Workspace.Sword1",
+    "game.Workspace.Sword2",
+    "game.ReplicatedStorage.WeaponModels.Sword3"
+  ]
+}
+```
+
+Returns empty array `[]` if no instances have the tag.
+
+## Example Usage
+
+### Find All Instances with Tag
+```javascript
+// Find all weapons
+get_tagged("Weapon")
+// Returns:
+// {
+//   "instances": [
+//     "game.Workspace.Sword",
+//     "game.Workspace.Gun",
+//     "game.Workspace.Bow"
+//   ]
+// }
+
+// Find all enemies
+get_tagged("Enemy")
+// Returns:
+// {
+//   "instances": [
+//     "game.Workspace.Zombie1",
+//     "game.Workspace.Zombie2",
+//     "game.Workspace.Boss"
+//   ]
+// }
+
+// Find all collectibles
+get_tagged("Collectible")
+// Returns paths to all collectible instances
+```
+
+### Process Tagged Instances
+```javascript
+// Get all weapons and modify their damage
+const weapons = get_tagged("Weapon");
+
+weapons.instances.forEach(weaponPath => {
+  // Increase damage by 10%
+  const currentDamage = get_attribute(weaponPath, "Damage");
+  set_attribute(weaponPath, "Damage", currentDamage * 1.1);
+});
+```
+
+### Multi-Tag Filtering
+```javascript
+// Find instances with multiple tags (intersection)
+const weapons = get_tagged("Weapon");
+const meleeWeapons = weapons.instances.filter(path => {
+  const tags = get_tags(path);
+  return tags.tags.includes("Melee");
+});
+
+console.log("Melee weapons:", meleeWeapons);
+```
+
+### Count Tagged Instances
+```javascript
+// Count how many enemies exist
+const enemies = get_tagged("Enemy");
+console.log(`Found ${enemies.instances.length} enemies`);
+
+// Count by sub-category
+const bosses = enemies.instances.filter(path => {
+  const tags = get_tags(path);
+  return tags.tags.includes("Boss");
+});
+console.log(`${bosses.length} of them are bosses`);
+```
+
+## Use Cases
+
+### Bulk Operations
+Modify properties on all instances of a category (e.g., make all enemies glow red).
+
+### System Initialization
+Find all instances that need to be registered with a gameplay system on game start.
+
+### Event Broadcasting
+Find all instances that should respond to a game event (e.g., damage all "Flammable" objects in radius).
+
+### Analytics and Debugging
+Count instances in categories to verify level design specifications.
+
+### Dynamic Spawning
+Find all spawn points tagged with a specific type to spawn appropriate entities.
+
+## Workflow Examples
+
+### Weapon System Initialization
+```javascript
+// Initialize all weapons in the game
+const weapons = get_tagged("Weapon");
+
+weapons.instances.forEach(weaponPath => {
+  // Get weapon properties
+  const damage = get_attribute(weaponPath, "Damage") || 10;
+  const fireRate = get_attribute(weaponPath, "FireRate") || 1.0;
+  
+  // Tag by power level
+  if (damage > 50) {
+    add_tag(weaponPath, "HighDamage");
+  }
+  
+  console.log(`Initialized weapon: ${weaponPath}`);
+});
+```
+
+### Enemy Wave Spawning
+```javascript
+// Spawn enemies at all spawn points
+const spawnPoints = get_tagged("EnemySpawn");
+
+spawnPoints.instances.forEach(spawnPath => {
+  // Get spawn configuration
+  const enemyType = get_attribute(spawnPath, "EnemyType") || "Zombie";
+  const count = get_attribute(spawnPath, "SpawnCount") || 1;
+  
+  console.log(`Spawning ${count} ${enemyType} at ${spawnPath}`);
+  // Spawn logic here...
+});
+```
+
+### Collectible Management
+```javascript
+// Reset all collectibles in the level
+const collectibles = get_tagged("Collectible");
+
+collectibles.instances.forEach(itemPath => {
+  // Make visible
+  set_property(itemPath, "Transparency", 0);
+  
+  // Enable collision
+  set_property(itemPath, "CanCollide", true);
+  
+  // Remove "Collected" tag if present
+  remove_tag(itemPath, "Collected");
+});
+
+console.log(`Reset ${collectibles.instances.length} collectibles`);
+```
+
+### Team-Based Operations
+```javascript
+// Apply damage to all Red Team members
+const redTeam = get_tagged("RedTeam");
+
+redTeam.instances.forEach(unitPath => {
+  const currentHealth = get_attribute(unitPath, "Health");
+  set_attribute(unitPath, "Health", Math.max(0, currentHealth - 10));
+});
+```
+
+## Performance Considerations
+
+- **Extremely fast**: CollectionService uses indexed queries (O(1) lookup)
+- **No hierarchy traversal**: Doesn't search through folder structures
+- **Scales well**: Performance is independent of instance count in workspace
+- **Recommended**: Use tags instead of manual hierarchy searching
+
+## Comparison with Manual Search
+
+### Using get_tagged (Fast)
+```javascript
+// O(1) lookup via indexed tags
+const weapons = get_tagged("Weapon");
+// Instant, regardless of game size
+```
+
+### Manual Search (Slow)
+```javascript
+// O(n) traversal through entire hierarchy
+const allInstances = get_descendants("game.Workspace");
+const weapons = allInstances.filter(path => {
+  const props = get_instance_properties(path);
+  return props.Name.includes("Weapon");
+});
+// Slow, scales with instance count
+```
+
+## Tag-Based Architecture Benefits
+
+### Decoupled Systems
+Systems query by tag instead of hardcoded paths, making levels more flexible.
+
+### Multi-Categorization
+One instance can belong to multiple systems (e.g., "Weapon" + "Collectible" + "Legendary").
+
+### Dynamic Content
+New tagged instances are automatically included in queries without code changes.
+
+### Easy Refactoring
+Move instances anywhere in hierarchy without breaking tag-based queries.
+
+## Error Handling
+
+- Throws error if `tagName` is empty or invalid
+- Returns empty array `[]` if no instances have the tag (not an error)
+- Tag names are case-sensitive (`"Weapon"` ≠ `"weapon"`)
+- Searches across entire `game` hierarchy (Workspace, ReplicatedStorage, etc.)
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Get Tags" icon="list" href="/api/tags/get-tags">
+    Get all tags on a specific instance
+  </Card>
+  <Card title="Add Tag" icon="plus" href="/api/tags/add-tag">
+    Add a tag to an instance
+  </Card>
+  <Card title="Remove Tag" icon="minus" href="/api/tags/remove-tag">
+    Remove a tag from an instance
+  </Card>
+</CardGroup>
+
+## Advanced Patterns
+
+### Tag Intersection (AND logic)
+```javascript
+// Find instances with BOTH "Weapon" AND "Legendary" tags
+const weapons = get_tagged("Weapon");
+const legendary = weapons.instances.filter(path => {
+  const tags = get_tags(path);
+  return tags.tags.includes("Legendary");
+});
+```
+
+### Tag Union (OR logic)
+```javascript
+// Find instances with EITHER "RedTeam" OR "BlueTeam" tags
+const redTeam = get_tagged("RedTeam");
+const blueTeam = get_tagged("BlueTeam");
+const allTeams = [...redTeam.instances, ...blueTeam.instances];
+```
+
+### Tag Exclusion (NOT logic)
+```javascript
+// Find weapons that are NOT melee
+const weapons = get_tagged("Weapon");
+const rangedWeapons = weapons.instances.filter(path => {
+  const tags = get_tags(path);
+  return !tags.tags.includes("Melee");
+});
+```
+
+## Notes
+
+- Searches across entire game hierarchy (all services)
+- Returns instances in arbitrary order (not spatial or hierarchical)
+- Tag names are case-sensitive
+- Includes instances in all DataModel services (Workspace, ServerStorage, etc.)
+- Results update immediately when tags are added/removed
+- Maximum practical result count: ~10,000 instances (no hard limit)

@@ -1,0 +1,295 @@
+---
+title: 'Search by Property'
+description: 'Find Roblox instances with specific property values'
+---
+
+## Overview
+
+The `search_by_property` tool searches the entire game for instances that have a specific property set to a particular value. This is powerful for finding objects by their characteristics rather than by name or location.
+
+<Note>
+  This tool searches **all instances** in the game hierarchy. Use specific property names and values to narrow results.
+</Note>
+
+## Parameters
+
+<ParamField path="propertyName" type="string" required>
+  Name of the property to search for.
+  
+  **Common properties:**
+  - `Material` - Find parts with specific material
+  - `Transparency` - Find transparent objects
+  - `BrickColor` - Find objects by color
+  - `Anchored` - Find anchored/unanchored parts
+  - `CanCollide` - Find collidable objects
+  - `Disabled` - Find disabled scripts
+</ParamField>
+
+<ParamField path="propertyValue" type="string" required>
+  Value to search for. Must be provided as a string.
+  
+  **Examples:**
+  - `"Plastic"` - For Material property
+  - `"0.5"` - For Transparency property
+  - `"true"` or `"false"` - For boolean properties
+  - `"Bright red"` - For BrickColor property
+</ParamField>
+
+## Response Format
+
+<ResponseField name="results" type="array">
+  Array of instances matching the property criteria.
+  
+  <ResponseField name="path" type="string">
+    Full path to the matching instance
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Instance name
+  </ResponseField>
+  
+  <ResponseField name="className" type="string">
+    Roblox class type
+  </ResponseField>
+  
+  <ResponseField name="propertyValue" type="string">
+    The actual property value found (for verification)
+  </ResponseField>
+</ResponseField>
+
+## Code Examples
+
+### Find All Plastic Parts
+
+```typescript
+// Find all parts with Plastic material
+const plasticParts = await callTool('search_by_property', {
+  propertyName: 'Material',
+  propertyValue: 'Plastic'
+});
+
+console.log(`Found ${plasticParts.results.length} plastic parts`);
+plasticParts.results.forEach(result => {
+  console.log(`- ${result.path}`);
+});
+```
+
+### Find Transparent Objects
+
+```typescript
+// Find all objects with 50% transparency
+const transparent = await callTool('search_by_property', {
+  propertyName: 'Transparency',
+  propertyValue: '0.5'
+});
+
+console.log('Semi-transparent objects:', transparent.results);
+```
+
+### Find Anchored Parts
+
+```typescript
+// Find all anchored parts in the game
+const anchored = await callTool('search_by_property', {
+  propertyName: 'Anchored',
+  propertyValue: 'true'
+});
+
+console.log(`Found ${anchored.results.length} anchored objects`);
+```
+
+### Find Disabled Scripts
+
+```typescript
+// Find all disabled scripts
+const disabledScripts = await callTool('search_by_property', {
+  propertyName: 'Disabled',
+  propertyValue: 'true'
+});
+
+disabledScripts.results.forEach(script => {
+  console.log(`Disabled: ${script.name} at ${script.path}`);
+});
+```
+
+## Common Use Cases
+
+### 1. Material Standardization
+
+Find and update all parts with a specific material:
+
+```typescript
+// Find all wooden parts
+const woodParts = await callTool('search_by_property', {
+  propertyName: 'Material',
+  propertyValue: 'Wood'
+});
+
+// Change them all to WoodPlanks
+for (const part of woodParts.results) {
+  await callTool('set_property', {
+    instancePath: part.path,
+    propertyName: 'Material',
+    propertyValue: 'WoodPlanks'
+  });
+}
+
+console.log(`Updated ${woodParts.results.length} parts`);
+```
+
+### 2. Find Collision Issues
+
+Locate objects that might cause collision problems:
+
+```typescript
+// Find all non-collidable parts
+const nonCollidable = await callTool('search_by_property', {
+  propertyName: 'CanCollide',
+  propertyValue: 'false'
+});
+
+console.log('Non-collidable parts:');
+nonCollidable.results.forEach(obj => {
+  console.log(`- ${obj.name} (${obj.className})`);
+});
+```
+
+### 3. Color-Based Selection
+
+Find all objects with a specific color:
+
+```typescript
+// Find all red objects
+const redObjects = await callTool('search_by_property', {
+  propertyName: 'BrickColor',
+  propertyValue: 'Bright red'
+});
+
+console.log(`Found ${redObjects.results.length} red objects`);
+
+// Get their positions
+for (const obj of redObjects.results) {
+  const props = await callTool('get_instance_properties', {
+    instancePath: obj.path
+  });
+  if (props.properties.Position) {
+    console.log(`${obj.name}: ${JSON.stringify(props.properties.Position)}`);
+  }
+}
+```
+
+### 4. Audit Script States
+
+Check which scripts are disabled:
+
+```typescript
+const disabled = await callTool('search_by_property', {
+  propertyName: 'Disabled',
+  propertyValue: 'true'
+});
+
+const enabled = await callTool('search_by_property', {
+  propertyName: 'Disabled',
+  propertyValue: 'false'
+});
+
+console.log(`Scripts: ${enabled.results.length} enabled, ${disabled.results.length} disabled`);
+```
+
+### 5. Find Unanchored Objects
+
+Locate parts that might fall or move:
+
+```typescript
+// Find unanchored parts (potential physics objects)
+const unanchored = await callTool('search_by_property', {
+  propertyName: 'Anchored',
+  propertyValue: 'false'
+});
+
+console.log('Unanchored parts (will be affected by physics):');
+unanchored.results.forEach(part => {
+  console.log(`- ${part.name} at ${part.path}`);
+});
+```
+
+### 6. Batch Property Verification
+
+Verify that certain objects have correct property values:
+
+```typescript
+// Find all Neon material parts
+const neonParts = await callTool('search_by_property', {
+  propertyName: 'Material',
+  propertyValue: 'Neon'
+});
+
+// Check if they also have expected properties
+for (const part of neonParts.results) {
+  const props = await callTool('get_instance_properties', {
+    instancePath: part.path
+  });
+  
+  if (props.properties.Transparency > 0) {
+    console.warn(`Neon part ${part.name} is transparent - may not be visible!`);
+  }
+}
+```
+
+## Advanced Usage
+
+### Combine with Filtering
+
+```typescript
+// Find plastic parts, then filter by location
+const plastic = await callTool('search_by_property', {
+  propertyName: 'Material',
+  propertyValue: 'Plastic'
+});
+
+const workspacePlastic = plastic.results.filter(obj => 
+  obj.path.startsWith('game.Workspace')
+);
+
+console.log(`Found ${workspacePlastic.length} plastic parts in Workspace`);
+```
+
+### Property-Based Reporting
+
+```typescript
+// Generate a report of material usage
+const materials = ['Plastic', 'Metal', 'Wood', 'Concrete', 'Glass'];
+const report = {};
+
+for (const material of materials) {
+  const results = await callTool('search_by_property', {
+    propertyName: 'Material',
+    propertyValue: material
+  });
+  report[material] = results.results.length;
+}
+
+console.log('Material usage report:', report);
+// Output: { Plastic: 45, Metal: 12, Wood: 8, Concrete: 3, Glass: 5 }
+```
+
+## Notes
+
+<Warning>
+  **String values only**: The `propertyValue` parameter must be a string. For boolean properties, use `"true"` or `"false"`. For numbers, use string representations like `"0.5"`.
+</Warning>
+
+<Info>
+  **Case sensitivity**: Property values may be case-sensitive. For BrickColor, use exact names like `"Bright red"` not `"bright red"`.
+</Info>
+
+<Tip>
+  **Performance**: Searching the entire game can be slow for large projects. Consider using more specific tools like `get_descendants` with filters if you know the general location.
+</Tip>
+
+## Related Tools
+
+- **search_objects** - Search by name, class, or property (more flexible)
+- **get_instance_properties** - Get all properties of an instance
+- **mass_get_property** - Get the same property from multiple instances
+- **set_property** - Modify properties on found instances

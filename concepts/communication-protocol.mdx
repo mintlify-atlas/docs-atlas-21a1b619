@@ -1,0 +1,542 @@
+---
+title: 'Communication Protocol'
+description: 'Deep dive into the request/response flow, long polling, and error handling mechanisms'
+icon: 'arrows-left-right'
+---
+
+## Protocol Overview
+
+The Roblox Studio MCP uses a **long-polling HTTP protocol** to enable real-time communication between the MCP server and Studio plugin. This protocol was redesigned in v2.0.0 to eliminate wasteful interval polling and provide instant response times.
+
+<Info>
+  **v2.0.0 Upgrade**: Replaced 500ms interval polling with long-polling (25s hold) for instant response and reduced network overhead.
+</Info>
+
+## Request Lifecycle
+
+Every request flows through a complete lifecycle from AI assistant to Studio and back:
+
+### 1. Request Creation
+
+When an AI assistant calls a tool:
+
+```typescript
+// bridge-service.js
+async sendRequest(endpoint, data) {
+  const requestId = uuidv4();  // Generate unique ID
+  
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      if (this.pendingRequests.has(requestId)) {
+        this.pendingRequests.delete(requestId);
+        reject(new Error('Request timeout'));
+      }
+    }, 30000);  // 30-second timeout
+    
+    const request = {
+      id: requestId,
+      endpoint,
+      data,
+      timestamp: Date.now(),
+      resolve,
+      reject,
+      timeoutId,
+      claimed: false  // Not yet claimed by plugin
+    };
+    
+    this.pendingRequests.set(requestId, request);
+    this._notifyWaiters();  // Wake up any waiting poll requests
+  });
+}
+```
+
+**Key Mechanisms**:
+- **UUID Generation**: Each request gets a unique identifier using `uuid` library
+- **Promise-Based**: Async/await compatible for clean MCP server code
+- **Timeout Protection**: 30-second timer prevents infinite hangs
+- **Request Claiming**: Prevents duplicate processing if plugin reconnects
+
+### 2. Request Queuing
+
+Requests are stored in a FIFO queue with priority by timestamp:
+
+```typescript
+// bridge-service.js
+getPendingRequest() {
+  let oldestRequest = null;
+  
+  for (const request of this.pendingRequests.values()) {
+    if (request.claimed) continue;  // Skip already claimed
+    
+    if (!oldestRequest || request.timestamp < oldestRequest.timestamp) {
+      oldestRequest = request;
+    }
+  }
+  
+  if (oldestRequest) {
+    oldestRequest.claimed = true;  // Mark as claimed
+    return {
+      requestId: oldestRequest.id,
+      request: {
+        endpoint: oldestRequest.endpoint,
+        data: oldestRequest.data
+      }
+    };
+  }
+  
+  return null;
+}
+```
+
+**Features**:
+- **FIFO ordering**: Oldest request is processed first
+- **Claim mechanism**: Prevents race conditions with multiple pollers
+- **Unclaim support**: If plugin disconnects, request goes back to queue
+
+### 3. Long Polling
+
+The plugin polls the HTTP bridge using long-polling:
+
+```typescript
+// http-server.js
+app.get('/poll', async (req, res) => {
+  // Track plugin activity
+  lastPluginActivity = Date.now();
+  
+  // Check MCP server status
+  if (!isMCPServerActive()) {
+    res.status(503).json({
+      error: 'MCP server not connected',
+      pluginConnected: true,
+      mcpConnected: false
+    });
+    return;
+  }
+  
+  // Handle client disconnect
+  let claimedRequestId = null;
+  req.on('close', () => {
+    if (claimedRequestId) {
+      bridge.unclaimRequest(claimedRequestId);  // Return to queue
+    }
+  });
+  
+  // Wait up to 25 seconds for a request
+  const pendingRequest = await bridge.waitForRequest(25000);
+  
+  if (pendingRequest) {
+    claimedRequestId = pendingRequest.requestId;
+    res.json({
+      request: pendingRequest.request,
+      requestId: pendingRequest.requestId,
+      mcpConnected: true
+    });
+  } else {
+    // Timeout - no work available
+    res.json({
+      request: null,
+      mcpConnected: true
+    });
+  }
+});
+```
+
+**Long-Polling Flow**:
+
+<Steps>
+  <Step title="Plugin sends GET /poll">
+    Plugin initiates long-polling request to HTTP bridge
+  </Step>
+  
+  <Step title="Server holds connection">
+    If no work is available, server holds the connection for up to 25 seconds
+  </Step>
+  
+  <Step title="Work arrives (instant response)">
+    When AI makes a tool call, server immediately responds to held connection
+  </Step>
+  
+  <Step title="Timeout (no work)">
+    After 25 seconds with no work, server returns `{request: null}`
+  </Step>
+  
+  <Step title="Plugin re-polls immediately">
+    Plugin immediately initiates a new `/poll` request to maintain connection
+  </Step>
+</Steps>
+
+### 4. Plugin Execution
+
+The plugin receives the request and executes it:
+
+```lua
+-- plugin.luau (simplified)
+local function longPollLoop()
+  while pluginState.isActive do
+    local success, result = pcall(function()
+      return HttpService:RequestAsync({
+        Url = pluginState.serverUrl .. "/poll",
+        Method = "GET"
+      })
+    end)
+    
+    if success and result.Success then
+      local data = HttpService:JSONDecode(result.Body)
+      
+      if data.request and data.mcpConnected then
+        -- Process the request
+        local response = processRequest(data.request)
+        sendResponse(data.requestId, response)
+      end
+    end
+  end
+end
+```
+
+### 5. Response Submission
+
+Plugin POSTs results back to HTTP bridge:
+
+```lua
+-- plugin.luau
+local function sendResponse(requestId, responseData)
+  HttpService:RequestAsync({
+    Url = pluginState.serverUrl .. "/response",
+    Method = "POST",
+    Headers = { ["Content-Type"] = "application/json" },
+    Body = HttpService:JSONEncode({
+      requestId = requestId,
+      response = responseData
+    })
+  })
+end
+```
+
+```typescript
+// http-server.js
+app.post('/response', (req, res) => {
+  const { requestId, response, error } = req.body;
+  
+  if (error) {
+    bridge.rejectRequest(requestId, error);
+  } else {
+    bridge.resolveRequest(requestId, response);
+  }
+  
+  res.json({ success: true });
+});
+```
+
+### 6. Promise Resolution
+
+The bridge resolves the original promise:
+
+```typescript
+// bridge-service.js
+resolveRequest(requestId, response) {
+  const request = this.pendingRequests.get(requestId);
+  
+  if (request) {
+    clearTimeout(request.timeoutId);  // Cancel timeout
+    this.pendingRequests.delete(requestId);  // Remove from queue
+    request.resolve(response);  // Resolve promise
+  }
+}
+```
+
+## Long Polling vs Interval Polling
+
+<Tabs>
+  <Tab title="Long Polling (v2.0.0)">
+    **How it works**:
+    - Plugin sends `/poll` request
+    - Server holds connection for 25 seconds
+    - Server responds immediately when work arrives
+    - Plugin re-polls instantly after response
+    
+    **Advantages**:
+    - ⚡ **Instant response** when work arrives
+    - 📉 **98% fewer requests** (no constant polling)
+    - 🔋 **Lower CPU usage** on both client and server
+    - 🌐 **Better network efficiency** (fewer connection cycles)
+    
+    **Timing**:
+    ```
+    Work arrives: <1ms response time
+    No work: 25s timeout, immediate re-poll
+    ```
+  </Tab>
+  
+  <Tab title="Interval Polling (v1.x)">
+    **How it works**:
+    - Plugin polls every 500ms regardless of work
+    - Server responds immediately (work or no work)
+    - Plugin waits 500ms before next poll
+    
+    **Disadvantages**:
+    - ⏱️ **Average 250ms latency** (half of poll interval)
+    - 📈 **120 requests/minute** even with no work
+    - 🔄 **Constant CPU cycles** checking for work
+    - ⚠️ **Network overhead** from frequent requests
+    
+    **Timing**:
+    ```
+    Best case: 0ms (work available when polling)
+    Average: 250ms
+    Worst case: 500ms
+    ```
+  </Tab>
+</Tabs>
+
+## Timeout Handling
+
+The protocol implements multi-level timeout protection:
+
+### Request Timeout (30 seconds)
+
+```typescript
+const REQUEST_TIMEOUT = 30000;  // 30 seconds
+
+// Set on request creation
+const timeoutId = setTimeout(() => {
+  if (this.pendingRequests.has(requestId)) {
+    this.pendingRequests.delete(requestId);
+    reject(new Error('Request timeout'));
+  }
+}, REQUEST_TIMEOUT);
+```
+
+**What it protects against**:
+- Plugin crashes without responding
+- Stuck operations in Studio API
+- Network failures preventing response
+- Plugin disconnect during processing
+
+### Long-Poll Timeout (25 seconds)
+
+```typescript
+await bridge.waitForRequest(25000);
+```
+
+**Why 25 seconds?**
+- Shorter than request timeout (30s)
+- Long enough to reduce polling overhead
+- Keeps connection alive for instant response
+- Allows server to send heartbeat if needed
+
+### Connection Timeout (35 seconds)
+
+```typescript
+// http-server.js
+const isPluginConnected = () => {
+  return pluginConnected && (Date.now() - lastPluginActivity < 35000);
+};
+```
+
+**Detection logic**:
+- Tracks last plugin activity timestamp
+- 35 seconds = 25s poll + 10s margin
+- Allows for one missed poll before disconnect
+
+## Error Recovery
+
+The protocol implements robust error recovery:
+
+### Exponential Backoff
+
+```lua
+-- plugin.luau
+local pluginState = {
+  consecutiveFailures = 0,
+  currentRetryDelay = 0.5,      -- Start at 500ms
+  maxRetryDelay = 5,            -- Cap at 5 seconds
+  retryBackoffMultiplier = 1.2  -- 20% increase per failure
+}
+
+-- On failure
+if not success then
+  pluginState.consecutiveFailures += 1
+  
+  if pluginState.consecutiveFailures > 1 then
+    pluginState.currentRetryDelay = math.min(
+      pluginState.currentRetryDelay * pluginState.retryBackoffMultiplier,
+      pluginState.maxRetryDelay
+    )
+  end
+  
+  task.wait(pluginState.currentRetryDelay)
+end
+
+-- On success
+if success then
+  pluginState.consecutiveFailures = 0
+  pluginState.currentRetryDelay = 0.5  -- Reset
+end
+```
+
+**Backoff progression**:
+```
+Failure 1: 0.5s delay
+Failure 2: 0.6s delay (0.5 * 1.2)
+Failure 3: 0.72s delay (0.6 * 1.2)
+Failure 4: 0.86s delay
+Failure 5: 1.03s delay
+...
+Failure 20+: 5.0s delay (capped)
+```
+
+### Request Unclaiming
+
+If the plugin disconnects while processing:
+
+```typescript
+// http-server.js
+req.on('close', () => {
+  if (claimedRequestId) {
+    bridge.unclaimRequest(claimedRequestId);  // Return to queue
+  }
+});
+```
+
+```typescript
+// bridge-service.js
+unclaimRequest(requestId) {
+  const request = this.pendingRequests.get(requestId);
+  if (request) {
+    request.claimed = false;  // Available for next poll
+    this._notifyWaiters();    // Notify waiting pollers
+  }
+}
+```
+
+### Cleanup of Stale Requests
+
+```typescript
+// bridge-service.js
+cleanupOldRequests() {
+  const now = Date.now();
+  
+  for (const [id, request] of this.pendingRequests.entries()) {
+    if (now - request.timestamp > this.requestTimeout) {
+      clearTimeout(request.timeoutId);
+      this.pendingRequests.delete(id);
+      request.reject(new Error('Request timeout'));
+    }
+  }
+}
+```
+
+## Request Format
+
+### MCP Server → Plugin
+
+```json
+{
+  "request": {
+    "endpoint": "/api/file-tree",
+    "data": {
+      "path": "game.ServerStorage"
+    }
+  },
+  "requestId": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+  "mcpConnected": true,
+  "pluginConnected": true
+}
+```
+
+### Plugin → MCP Server
+
+```json
+{
+  "requestId": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+  "response": {
+    "tree": {
+      "name": "ServerStorage",
+      "className": "ServerStorage",
+      "children": [...]
+    },
+    "timestamp": 1678901234567
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "requestId": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+  "error": "Instance not found: game.InvalidPath"
+}
+```
+
+## Connection States
+
+The plugin visualizes connection state with detailed feedback:
+
+| State | HTTP Status | MCP Status | Visual Indicator | Description |
+|-------|-------------|------------|------------------|-------------|
+| **Offline** | ❌ | ❌ | 🔴 Red | HTTP server unreachable |
+| **Waiting** | ✅ | ⏳ | 🟡 Yellow | HTTP OK, waiting for MCP server |
+| **Connected** | ✅ | ✅ | 🟢 Green | Fully operational |
+| **Retrying** | ⚠️ | ⚠️ | 🟡 Yellow | Connection lost, retrying |
+| **Error** | ❌ | ❌ | 🔴 Red | 50+ consecutive failures |
+
+## Performance Characteristics
+
+<CardGroup cols={2}>
+  <Card title="Latency" icon="gauge-high">
+    **Long polling**: Less than 1ms when work is available
+    
+    **Old interval polling**: 0-500ms average 250ms
+  </Card>
+  
+  <Card title="Network Usage" icon="network-wired">
+    **Long polling**: ~2 requests/25s = 4.8 req/min
+    
+    **Old interval polling**: 120 req/min
+  </Card>
+  
+  <Card title="CPU Usage" icon="microchip">
+    **Long polling**: Idle most of the time
+    
+    **Old interval polling**: Constant wake-ups every 500ms
+  </Card>
+  
+  <Card title="Throughput" icon="gauge">
+    **Max requests**: Limited by 30s timeout
+    
+    **Typical**: 1-2 seconds per request
+  </Card>
+</CardGroup>
+
+## Protocol Configuration
+
+```typescript
+// http-server.js
+const LONG_POLL_TIMEOUT = 25000;        // 25 seconds
+const REQUEST_TIMEOUT = 30000;          // 30 seconds
+const PLUGIN_TIMEOUT = 35000;           // 35 seconds
+const MAX_PAYLOAD_SIZE = '50mb';        // 50 megabytes
+```
+
+```lua
+-- plugin.luau
+local RETRY_SETTINGS = {
+  initialDelay = 0.5,                   -- 500ms
+  maxDelay = 5,                         -- 5 seconds
+  backoffMultiplier = 1.2,              -- 20% increase
+  maxFailuresBeforeError = 50           -- Give up after 50
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="diagram-project" href="/concepts/architecture">
+    Understand the overall system design and components
+  </Card>
+  
+  <Card title="Plugin System" icon="plug" href="/concepts/plugin-system">
+    Learn how the Studio plugin implements this protocol
+  </Card>
+</CardGroup>

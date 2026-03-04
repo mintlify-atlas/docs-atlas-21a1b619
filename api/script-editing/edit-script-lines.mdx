@@ -1,0 +1,355 @@
+---
+title: 'edit_script_lines'
+description: 'Replace specific line ranges in Roblox scripts'
+icon: 'pen-to-square'
+---
+
+## Overview
+
+Replace specific lines in a Roblox script without rewriting the entire source. Provides precise, line-level editing for efficient script modifications.
+
+<Info>
+**Line numbers are 1-indexed** and ranges are **inclusive**. Always use the `numberedSource` field from `get_script_source` to identify correct line numbers.
+</Info>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path to the script using dot notation
+  
+  **Examples:**
+  - `game.ServerScriptService.MainScript`
+  - `game.StarterPlayer.StarterPlayerScripts.LocalScript`
+  - `game.ReplicatedStorage.Modules.DataManager`
+</ParamField>
+
+<ParamField path="startLine" type="number" required>
+  First line to replace (1-indexed)
+  
+  **Get from `numberedSource` field of `get_script_source`**
+</ParamField>
+
+<ParamField path="endLine" type="number" required>
+  Last line to replace (inclusive)
+  
+  **Get from `numberedSource` field of `get_script_source`**
+</ParamField>
+
+<ParamField path="newContent" type="string" required>
+  New content to replace the specified lines
+  
+  - Can be single line or multiple lines (separated by `\n`)
+  - Preserves indentation exactly as provided
+  - Must be valid Lua syntax
+</ParamField>
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "Lines 45-47 replaced successfully",
+  "linesReplaced": 3,
+  "newLineCount": 2,
+  "totalLines": 156
+}
+```
+
+<ResponseField name="success" type="boolean">
+  Whether the operation completed successfully
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Status message describing the operation
+</ResponseField>
+
+<ResponseField name="linesReplaced" type="number">
+  Number of lines removed (endLine - startLine + 1)
+</ResponseField>
+
+<ResponseField name="newLineCount" type="number">
+  Number of lines added
+</ResponseField>
+
+<ResponseField name="totalLines" type="number">
+  Total lines in script after edit
+</ResponseField>
+
+## Usage Examples
+
+### Replace Single Line
+
+```json
+{
+  "instancePath": "game.ServerScriptService.MainScript",
+  "startLine": 12,
+  "endLine": 12,
+  "newContent": "    print('Updated message')"
+}
+```
+
+### Replace Function Body
+
+**Before (lines 45-47):**
+```lua
+45: local function onPlayerJoin(player)
+46:     print('Player joined:', player.Name)
+47: end
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.PlayerHandler",
+  "startLine": 46,
+  "endLine": 46,
+  "newContent": "    print('Welcome!', player.Name)\n    player:SetAttribute('JoinTime', os.time())"
+}
+```
+
+**After (lines 45-48):**
+```lua
+45: local function onPlayerJoin(player)
+46:     print('Welcome!', player.Name)
+47:     player:SetAttribute('JoinTime', os.time())
+48: end
+```
+
+### Replace Multiple Lines
+
+**Before (lines 20-25):**
+```lua
+20: local function calculateDamage(attacker, target)
+21:     local damage = 10
+22:     target.Health = target.Health - damage
+23:     print('Damage dealt:', damage)
+24:     return damage
+25: end
+```
+
+**Request:**
+```json
+{
+  "instancePath": "game.ServerScriptService.Combat",
+  "startLine": 21,
+  "endLine": 23,
+  "newContent": "    local baseDamage = 10\n    local multiplier = attacker:GetAttribute('Strength') or 1\n    local damage = baseDamage * multiplier\n    target.Health = math.max(0, target.Health - damage)\n    print('Damage dealt:', damage, 'to', target.Name)"
+}
+```
+
+**After (lines 20-27):**
+```lua
+20: local function calculateDamage(attacker, target)
+21:     local baseDamage = 10
+22:     local multiplier = attacker:GetAttribute('Strength') or 1
+23:     local damage = baseDamage * multiplier
+24:     target.Health = math.max(0, target.Health - damage)
+25:     print('Damage dealt:', damage, 'to', target.Name)
+26:     return damage
+27: end
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Read Before Editing">
+    **Step 1:** Call `get_script_source` to get current line numbers
+    ```json
+    {"instancePath": "game.ServerScriptService.Script"}
+    ```
+    
+    **Step 2:** Find target lines in `numberedSource`:
+    ```
+    15: local function example()
+    16:     print('old code')
+    17: end
+    ```
+    
+    **Step 3:** Use exact line numbers from numberedSource:
+    ```json
+    {
+      "instancePath": "game.ServerScriptService.Script",
+      "startLine": 16,
+      "endLine": 16,
+      "newContent": "    print('new code')"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Preserve Indentation">
+    Match the indentation of surrounding code:
+    
+    ```lua
+    -- Function at root level (no indent)
+    function example()
+        -- Content indented 4 spaces
+        if condition then
+            -- Nested content indented 8 spaces
+            print('Hello')
+        end
+    end
+    ```
+    
+    When editing line 19 (inside if statement), use 12 spaces:
+    ```json
+    {
+      "startLine": 19,
+      "endLine": 19,
+      "newContent": "            print('Properly indented')"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Multi-Line Replacements">
+    Use `\n` to separate lines in newContent:
+    
+    ```json
+    {
+      "startLine": 10,
+      "endLine": 10,
+      "newContent": "    local a = 1\n    local b = 2\n    return a + b"
+    }
+    ```
+    
+    This replaces line 10 with 3 new lines.
+  </Accordion>
+
+  <Accordion title="Line Range is Inclusive">
+    `startLine` to `endLine` includes both endpoints:
+    
+    - `startLine: 5, endLine: 5` → replaces line 5 only
+    - `startLine: 5, endLine: 7` → replaces lines 5, 6, and 7
+    - `startLine: 5, endLine: 10` → replaces 6 lines total
+  </Accordion>
+
+  <Accordion title="Validate Syntax After Editing">
+    After making edits, verify the script still has valid syntax:
+    
+    ```lua
+    -- Use execute_lua tool:
+    local script = game.ServerScriptService.MainScript
+    local source = script.Source
+    local fn, err = loadstring(source)
+    return err or "Syntax OK"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Update Function Logic
+
+```json Replace function body
+{
+  "instancePath": "game.ServerScriptService.Utils",
+  "startLine": 15,
+  "endLine": 17,
+  "newContent": "    -- Updated implementation\n    return value * 2"
+}
+```
+
+### Fix Bug in Specific Lines
+
+```json Fix off-by-one error
+{
+  "instancePath": "game.ServerScriptService.GameManager",
+  "startLine": 42,
+  "endLine": 42,
+  "newContent": "    for i = 1, #players do  -- Fixed: was 0, #players"
+}
+```
+
+### Update Variable Declaration
+
+```json Change variable initialization
+{
+  "instancePath": "game.ServerScriptService.Config",
+  "startLine": 3,
+  "endLine": 3,
+  "newContent": "local MAX_PLAYERS = 20  -- Updated from 10"
+}
+```
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="get_script_source" icon="file-code" href="/api/script-editing/get-script-source">
+    Read script with line numbers
+  </Card>
+  <Card title="set_script_source" icon="arrows-rotate" href="/api/script-editing/set-script-source">
+    Replace entire script
+  </Card>
+  <Card title="insert_script_lines" icon="plus" href="/api/script-editing/insert-script-lines">
+    Insert new lines
+  </Card>
+  <Card title="delete_script_lines" icon="trash" href="/api/script-editing/delete-script-lines">
+    Delete line ranges
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+<ResponseExample>
+```json Error: Invalid Line Range
+{
+  "error": "Invalid line range: startLine must be <= endLine",
+  "startLine": 50,
+  "endLine": 40
+}
+```
+
+```json Error: Line Out of Bounds
+{
+  "error": "Line range out of bounds",
+  "startLine": 100,
+  "endLine": 105,
+  "totalLines": 95
+}
+```
+
+```json Error: Invalid Content
+{
+  "error": "newContent must be a string",
+  "received": "number"
+}
+```
+</ResponseExample>
+
+## Complete Workflow Example
+
+```json Step 1: Read current source
+{
+  "name": "get_script_source",
+  "arguments": {
+    "instancePath": "game.ServerScriptService.GameManager"
+  }
+}
+```
+
+```text Step 2: Analyze numberedSource
+42: local function startRound()
+43:     print('Round starting')
+44:     roundActive = true
+45: end
+```
+
+```json Step 3: Edit specific lines
+{
+  "name": "edit_script_lines",
+  "arguments": {
+    "instancePath": "game.ServerScriptService.GameManager",
+    "startLine": 43,
+    "endLine": 44,
+    "newContent": "    print('Round starting in 3 seconds...')\n    task.wait(3)\n    roundActive = true\n    print('Round active!')"
+  }
+}
+```
+
+```lua Step 4: Result
+42: local function startRound()
+43:     print('Round starting in 3 seconds...')
+44:     task.wait(3)
+45:     roundActive = true
+46:     print('Round active!')
+47: end
+```

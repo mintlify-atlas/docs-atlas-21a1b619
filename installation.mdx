@@ -1,0 +1,482 @@
+---
+title: Installation
+description: Detailed installation instructions for Roblox Studio MCP server and plugin with troubleshooting
+---
+
+# Installation Guide
+
+Complete installation guide for both the MCP server and Roblox Studio plugin.
+
+## System Requirements
+
+- **Node.js** 16.x or higher (for MCP server)
+- **Roblox Studio** (latest version recommended)
+- **MCP-compatible AI client** (Claude Code, Claude Desktop, or any MCP client)
+- **Operating System**: Windows, macOS, or Linux
+
+## Part 1: MCP Server Installation
+
+The MCP server runs on your machine and exposes tools to AI assistants.
+
+### Option A: Install via NPM (Recommended)
+
+Install the package globally or in your project:
+
+```bash
+npm install -g robloxstudio-mcp
+```
+
+Or install locally in your project:
+
+```bash
+npm install robloxstudio-mcp
+```
+
+### Option B: Run with npx (No Installation)
+
+The `npx` method downloads and runs the latest version automatically:
+
+```bash
+npx -y robloxstudio-mcp
+```
+
+This is the recommended approach for MCP client configurations.
+
+## Part 2: MCP Client Configuration
+
+Configure your AI client to use the Roblox Studio MCP server.
+
+<Tabs>
+  <Tab title="Claude Code">
+    ### Claude Code Setup
+
+    Claude Code has built-in MCP support. Add the server with:
+
+    ```bash
+    claude mcp add robloxstudio -- npx -y robloxstudio-mcp
+    ```
+
+    This command:
+    1. Adds "robloxstudio" to your MCP configuration
+    2. Configures it to run via `npx -y robloxstudio-mcp`
+    3. Makes tools available immediately
+
+    **Verify installation:**
+
+    ```bash
+    claude mcp list
+    ```
+
+    You should see "robloxstudio-mcp" in the list.
+
+    **Remove if needed:**
+
+    ```bash
+    claude mcp remove robloxstudio
+    ```
+  </Tab>
+
+  <Tab title="Claude Desktop">
+    ### Claude Desktop Setup
+
+    1. **Locate your configuration file:**
+       - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+       - **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+
+    2. **Add the MCP server configuration:**
+
+    ```json
+    {
+      "mcpServers": {
+        "robloxstudio-mcp": {
+          "command": "npx",
+          "args": ["-y", "robloxstudio-mcp"],
+          "description": "Advanced Roblox Studio integration for AI assistants"
+        }
+      }
+    }
+    ```
+
+    3. **Restart Claude Desktop** for changes to take effect.
+
+    <Note>
+      If you have other MCP servers configured, add "robloxstudio-mcp" to the existing "mcpServers" object.
+    </Note>
+  </Tab>
+
+  <Tab title="Other MCP Clients">
+    ### Generic MCP Client Setup
+
+    For other MCP-compatible clients, add this configuration to your MCP config file:
+
+    ```json
+    {
+      "mcpServers": {
+        "robloxstudio-mcp": {
+          "command": "npx",
+          "args": ["-y", "robloxstudio-mcp"]
+        }
+      }
+    }
+    ```
+
+    Consult your AI client's documentation for the config file location.
+  </Tab>
+</Tabs>
+
+### Windows-Specific Configuration
+
+If you're on native Windows (not WSL) and encounter issues, use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "robloxstudio-mcp": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "robloxstudio-mcp@latest"]
+    }
+  }
+}
+```
+
+This runs the command through `cmd.exe` which can resolve path and environment issues.
+
+## Part 3: Studio Plugin Installation
+
+The plugin runs inside Roblox Studio and executes API calls for the MCP server.
+
+<Steps>
+  <Step title="Choose Installation Method">
+    Select the method that works best for you:
+
+    ### Method 1: Roblox Creator Store (Easiest)
+
+    1. Visit: [https://create.roblox.com/store/asset/132985143757536](https://create.roblox.com/store/asset/132985143757536)
+    2. Click the **"Install"** button
+    3. Plugin opens automatically in Studio
+    4. **No restart needed** — ready to use immediately!
+
+    ### Method 2: Direct Download
+
+    1. **Download the plugin file:**
+       - [MCPPlugin.rbxmx](https://github.com/boshyxd/robloxstudio-mcp/releases/latest/download/MCPPlugin.rbxmx)
+
+    2. **Save to plugins folder:**
+       - **Windows**: `%LOCALAPPDATA%/Roblox/Plugins/`
+         - Full path: `C:\Users\YourName\AppData\Local\Roblox\Plugins\`
+       - **macOS**: `~/Documents/Roblox/Plugins/`
+         - Full path: `/Users/YourName/Documents/Roblox/Plugins/`
+       - **Or use Studio**: Plugins tab → Plugins Folder button
+
+    3. **Restart Roblox Studio** completely
+
+    4. Plugin appears in toolbar with **"MCP Server"** button
+
+    ### Method 3: Save as Local Plugin
+
+    1. **Copy the plugin source code:**
+       - Open [plugin.luau](https://github.com/boshyxd/robloxstudio-mcp/blob/main/studio-plugin/plugin.luau) on GitHub
+       - Select all code (Ctrl+A / Cmd+A) and copy (Ctrl+C / Cmd+C)
+
+    2. **Create in Studio:**
+       - Open any Roblox Studio place
+       - In Explorer, right-click **ServerScriptService**
+       - Click **"Insert Object" → "Script"**
+       - Paste the plugin code into the script
+
+    3. **Save as plugin:**
+       - Right-click the script
+       - Select **"Save as Local Plugin..."**
+       - Name it "Roblox Studio MCP"
+       - Click **Save**
+
+    4. **Plugin appears immediately** in your toolbar — no restart needed!
+  </Step>
+
+  <Step title="Enable HTTP Requests">
+    The plugin requires HTTP access to communicate with the MCP server on `localhost:3002`.
+
+    1. In Roblox Studio, click **Home** tab
+    2. Click **Game Settings** button
+    3. Navigate to **Security** section
+    4. Find **"Allow HTTP Requests"** and check the box
+    5. Click **OK** to save
+
+    <Warning>
+      **Critical**: Without this setting, the plugin cannot connect. You'll see "HTTP 403 Forbidden" errors in the Output window.
+    </Warning>
+
+    **Alternative method:**
+
+    Insert a Script and run this code once:
+
+    ```lua
+    game:GetService("HttpService").HttpEnabled = true
+    ```
+
+    Then delete the script.
+  </Step>
+
+  <Step title="Activate the Plugin">
+    1. Look for the **"MCP Server"** button in the **Plugins** toolbar
+    2. Click the button to activate
+    3. A dock widget appears with:
+       - Connection status indicator
+       - Activity log panel
+       - Server URL configuration (default: `http://localhost:3002`)
+
+    <Tip>
+      The plugin starts in **disconnected** state (🔴 red). This is normal. It connects automatically when your AI makes requests.
+    </Tip>
+  </Step>
+
+  <Step title="Verify Installation">
+    Test that everything works:
+
+    1. **Check plugin status:**
+       - Plugin button should be in toolbar
+       - Dock widget should be visible
+       - No errors in Output window
+
+    2. **Test with AI:**
+       - Open your AI assistant (Claude Code/Desktop)
+       - Ask: "Show me the services in my Roblox game"
+       - AI should call `get_services` tool
+       - Plugin status changes to 🟢 **"Connected"**
+       - AI returns formatted list of services
+
+    3. **Check activity log:**
+       - Plugin's activity panel shows the request
+       - You can copy/export the log
+
+    If everything works, you're ready to go! 🎉
+  </Step>
+</Steps>
+
+## Configuration
+
+### Environment Variables
+
+The MCP server supports these environment variables:
+
+```bash
+# HTTP bridge port (default: 3002)
+HTTP_SERVER_PORT=3002
+
+# Request timeout in milliseconds (default: 30000)
+REQUEST_TIMEOUT=30000
+
+# Plugin poll interval in milliseconds (default: 500)
+PLUGIN_POLL_INTERVAL=500
+```
+
+Set these in your shell or MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "robloxstudio-mcp": {
+      "command": "npx",
+      "args": ["-y", "robloxstudio-mcp"],
+      "env": {
+        "HTTP_SERVER_PORT": "3002",
+        "REQUEST_TIMEOUT": "30000"
+      }
+    }
+  }
+}
+```
+
+### Plugin Configuration
+
+The plugin uses these defaults:
+
+- **Server URL**: `http://localhost:3002`
+- **Poll Interval**: 500ms (with long polling)
+- **Timeout**: 30 seconds per request
+
+You can modify the server URL in the plugin's dock widget if needed (e.g., different port or network testing).
+
+## Troubleshooting
+
+### MCP Server Issues
+
+<AccordionGroup>
+  <Accordion title="'npx: command not found'">
+    Node.js isn't installed or not in your PATH.
+
+    **Solution:**
+    1. Install Node.js from [nodejs.org](https://nodejs.org/)
+    2. Verify: `node --version` and `npm --version`
+    3. Restart your terminal
+    4. Try the MCP installation again
+  </Accordion>
+
+  <Accordion title="'Permission denied' errors">
+    NPM packages can't install globally without permissions.
+
+    **Solution (macOS/Linux):**
+    ```bash
+    sudo npm install -g robloxstudio-mcp
+    ```
+
+    **Solution (Windows):**
+    - Run terminal as Administrator
+    - Or use `npx` method instead (no installation needed)
+  </Accordion>
+
+  <Accordion title="AI can't find the tools">
+    MCP server isn't running or misconfigured.
+
+    **Checklist:**
+    - Configuration file has correct JSON syntax
+    - You restarted your AI client after editing config
+    - For Claude Code: `claude mcp list` shows the server
+    - No firewall blocking localhost:3002
+  </Accordion>
+
+  <Accordion title="Server crashes or times out">
+    Network or port conflicts.
+
+    **Solution:**
+    1. Check if port 3002 is in use: `netstat -an | grep 3002` (Unix) or `netstat -an | findstr 3002` (Windows)
+    2. Change port via environment variable:
+       ```json
+       "env": { "HTTP_SERVER_PORT": "3003" }
+       ```
+    3. Update plugin URL to match new port
+  </Accordion>
+</AccordionGroup>
+
+### Studio Plugin Issues
+
+<AccordionGroup>
+  <Accordion title="Plugin missing from toolbar">
+    Plugin file isn't in the correct location or Studio needs restart.
+
+    **Solution:**
+    1. Verify plugin file location:
+       - Windows: `%LOCALAPPDATA%/Roblox/Plugins/MCPPlugin.rbxmx`
+       - macOS: `~/Documents/Roblox/Plugins/MCPPlugin.rbxmx`
+    2. Restart Roblox Studio completely (close all windows)
+    3. Check Output window for plugin load errors
+    4. Try Method 3 (Save as Local Plugin) as alternative
+  </Accordion>
+
+  <Accordion title="'HTTP 403 Forbidden' errors">
+    HTTP requests are disabled in game settings.
+
+    **Solution:**
+    1. Game Settings → Security → Enable "Allow HTTP Requests"
+    2. Click OK and close settings
+    3. If error persists, restart Studio
+    4. Run this script once: `game:GetService("HttpService").HttpEnabled = true`
+  </Accordion>
+
+  <Accordion title="Plugin shows 'Disconnected' always">
+    This is **normal behavior** when idle. The plugin only connects when handling requests.
+
+    **To test:**
+    1. Ask your AI: "Get game.Workspace structure"
+    2. Watch plugin status change to 🟢 "Connected"
+    3. After request completes, returns to "Disconnected"
+
+    **If it never connects:**
+    - MCP server isn't running (check AI client)
+    - Firewall blocking localhost:3002
+    - Wrong server URL in plugin settings
+  </Accordion>
+
+  <Accordion title="'Connection refused' or timeout errors">
+    Plugin can't reach MCP server.
+
+    **Solution:**
+    1. Verify MCP server is running (ask AI a question)
+    2. Check plugin server URL matches MCP server port (default: `http://localhost:3002`)
+    3. Windows Firewall: Allow localhost connections
+    4. Antivirus: Whitelist Node.js and Roblox Studio
+  </Accordion>
+
+  <Accordion title="Plugin works but requests are slow">
+    Network latency or polling issues.
+
+    **Solution:**
+    - Check Output window for retry/timeout messages
+    - Long polling should respond instantly; 500ms+ delay suggests issues
+    - Verify no VPN or proxy intercepting localhost traffic
+    - Try restarting both Studio and MCP server
+  </Accordion>
+</AccordionGroup>
+
+### General Issues
+
+<AccordionGroup>
+  <Accordion title="Results are incomplete or truncated">
+    Large responses may need pagination or depth limits.
+
+    **Solution:**
+    - Use `maxDepth` parameter on `get_project_structure` (try 5-10)
+    - For large scripts, use `startLine`/`endLine` parameters
+    - Check Output window for memory/size warnings
+  </Accordion>
+
+  <Accordion title="AI hallucinating tool parameters">
+    AI isn't using the correct tool schema.
+
+    **Solution:**
+    - Be specific: "Use maxDepth=5" instead of "show me everything"
+    - For paths: Always use dot notation like `game.Workspace.Part`
+    - For Vector3: Use `{X: 0, Y: 5, Z: 0}` format, not strings
+    - Check AI client has latest MCP server version
+  </Accordion>
+</AccordionGroup>
+
+## Updating
+
+### Update MCP Server
+
+For npx method:
+
+```bash
+npx -y robloxstudio-mcp@latest
+```
+
+For npm global install:
+
+```bash
+npm update -g robloxstudio-mcp
+```
+
+For npm local install:
+
+```bash
+npm update robloxstudio-mcp
+```
+
+### Update Studio Plugin
+
+1. Download latest [MCPPlugin.rbxmx](https://github.com/boshyxd/robloxstudio-mcp/releases/latest/download/MCPPlugin.rbxmx)
+2. Replace existing file in plugins folder
+3. Restart Studio
+
+Or re-install from Creator Store (auto-updates).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Try your first AI commands
+  </Card>
+  <Card title="Tool Reference" icon="wrench" href="/api/overview">
+    Explore all 53+ tools
+  </Card>
+</CardGroup>
+
+## Getting Help
+
+If you're still stuck:
+
+- **GitHub Issues**: [Report bugs](https://github.com/boshyxd/robloxstudio-mcp/issues)
+- **Discussions**: [Ask questions](https://github.com/boshyxd/robloxstudio-mcp/discussions)
+- **Check Output Window**: Studio's Output tab shows detailed error messages
+- **Activity Log**: Plugin's activity panel tracks all requests

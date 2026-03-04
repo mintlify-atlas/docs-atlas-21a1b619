@@ -1,0 +1,55 @@
+---
+title: 'create_object_with_properties'
+description: 'Create a new Roblox object instance with initial properties'
+---
+
+## Description
+
+Creates a new Roblox object instance with a specified class name, parent, and initial properties. This tool allows you to set properties immediately upon creation, which is more efficient than creating an object and then setting properties separately.
+
+## Parameters
+
+<ParamField path="className" type="string" required>
+  Roblox class name (e.g., "Part", "Script", "Folder")
+</ParamField>
+
+<ParamField path="parent" type="string" required>
+  Path to the parent instance (e.g., "game.Workspace")
+</ParamField>
+
+<ParamField path="name" type="string">
+  Optional name for the new object
+</ParamField>
+
+<ParamField path="properties" type="object">
+  Properties to set on creation. Keys are property names, values are the property values.
+</ParamField>
+
+## Example
+
+```json
+{
+  "className": "Part",
+  "parent": "game.Workspace",
+  "name": "Platform",
+  "properties": {
+    "Size": {"X": 10, "Y": 1, "Z": 10},
+    "Position": {"X": 0, "Y": 5, "Z": 0},
+    "BrickColor": "Bright blue",
+    "Material": "SmoothPlastic",
+    "Anchored": true
+  }
+}
+```
+
+## Use Cases
+
+- Creating fully configured objects in a single operation
+- Building game elements with specific properties from the start
+- Efficient object creation when multiple properties need to be set
+- Scripting complex scene setups
+
+## Related Tools
+
+- [create_object](/api/object-creation/create-object) - Create objects without initial properties
+- [mass_create_objects_with_properties](/api/object-creation/mass-create-objects-with-properties) - Create multiple objects with properties at once

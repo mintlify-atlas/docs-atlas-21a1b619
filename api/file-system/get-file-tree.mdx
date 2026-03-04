@@ -1,0 +1,219 @@
+---
+title: 'get_file_tree'
+description: 'Get the Roblox instance hierarchy tree from Roblox Studio'
+---
+
+## Overview
+
+The `get_file_tree` tool retrieves the instance hierarchy tree from Roblox Studio. It returns game instances (Parts, Scripts, Models, Folders, etc.) organized as a tree structure.
+
+<Warning>
+**Important:** This operates on Roblox Studio instances, NOT local filesystem files.
+</Warning>
+
+## Parameters
+
+<ParamField path="path" type="string" default="">
+  Roblox instance path to start from using dot notation (e.g., `"game.Workspace"`, `"game.ServerScriptService"`). 
+  
+  Defaults to game root if empty or not provided.
+
+  ### Examples
+  - `"game.Workspace"` - Get Workspace hierarchy
+  - `"game.ServerScriptService"` - Get all server scripts
+  - `"game.Workspace.Obby"` - Get specific folder hierarchy
+  - `""` - Get entire game hierarchy from root
+</ParamField>
+
+## Return Value
+
+Returns a JSON tree structure representing the instance hierarchy.
+
+<ResponseField name="content" type="array">
+  <ResponseField name="type" type="string">
+    Always `"text"`
+  </ResponseField>
+  <ResponseField name="text" type="string">
+    JSON string containing the tree structure with the following format:
+    
+    ```json
+    {
+      "name": "InstanceName",
+      "className": "Part",
+      "path": "game.Workspace.Part",
+      "children": [
+        {
+          "name": "ChildInstance",
+          "className": "Script",
+          "path": "game.Workspace.Part.Script",
+          "children": []
+        }
+      ]
+    }
+    ```
+  </ResponseField>
+</ResponseField>
+
+### Tree Node Structure
+
+Each node in the tree contains:
+
+- **name** (string) - The instance's Name property
+- **className** (string) - The instance's ClassName (e.g., "Part", "Script", "Folder")
+- **path** (string) - Full dot-notation path to the instance
+- **children** (array) - Array of child nodes with the same structure
+
+## Usage Examples
+
+### Get Workspace Hierarchy
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.Workspace"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"name\":\"Workspace\",\"className\":\"Workspace\",\"path\":\"game.Workspace\",\"children\":[{\"name\":\"Baseplate\",\"className\":\"Part\",\"path\":\"game.Workspace.Baseplate\",\"children\":[]},{\"name\":\"Camera\",\"className\":\"Camera\",\"path\":\"game.Workspace.Camera\",\"children\":[]}]}"
+    }
+  ]
+}
+```
+
+### Get All Server Scripts
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.ServerScriptService"
+  }
+}
+```
+
+Returns all scripts in ServerScriptService with their folder structure.
+
+### Get Entire Game Hierarchy
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": ""
+  }
+}
+```
+
+Returns the complete game structure starting from the DataModel root.
+
+### Get Specific Folder
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.ReplicatedStorage.Modules"
+  }
+}
+```
+
+Returns just the ModuleScripts in the specified folder.
+
+## Common Use Cases
+
+### 1. Exploring Game Structure
+
+Use `get_file_tree` to understand the organization of a Roblox place:
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.Workspace"
+  }
+}
+```
+
+### 2. Finding All Scripts
+
+Get the script hierarchy to see all LocalScripts, Scripts, and ModuleScripts:
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.ServerScriptService"
+  }
+}
+```
+
+### 3. Analyzing Folder Structure
+
+Explore how a specific system or feature is organized:
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.ReplicatedStorage.Systems"
+  }
+}
+```
+
+## Related Tools
+
+- **search_files** - Search for instances by name, type, or content
+- **get_project_structure** - Get hierarchy with depth control and filtering
+- **get_instance_children** - Get direct children of an instance without full tree
+- **get_descendants** - Get all descendants with class/name filters
+
+## Notes
+
+- The tree includes all descendants, not just immediate children
+- Very deep hierarchies may return large responses
+- For large game structures, consider using `get_project_structure` with `maxDepth` parameter
+- Empty folders will have an empty `children` array
+- The `path` field can be used directly with other tools
+
+## Error Handling
+
+### Instance Not Found
+
+If the specified path doesn't exist:
+
+```json
+{
+  "isError": true,
+  "content": [
+    {
+      "type": "text",
+      "text": "Error: Instance not found at path game.Workspace.NonExistent"
+    }
+  ]
+}
+```
+
+### Bridge Not Connected
+
+If the Roblox Studio bridge plugin is not running:
+
+```json
+{
+  "isError": true,
+  "content": [
+    {
+      "type": "text",
+      "text": "Error: Bridge not connected. Make sure Roblox Studio is open with the MCP bridge plugin installed."
+    }
+  ]
+}
+```

@@ -1,0 +1,70 @@
+---
+title: 'mass_create_objects'
+description: 'Create multiple objects at once (basic, without properties)'
+---
+
+## Description
+
+Creates multiple Roblox object instances in a single operation. This is useful for batch creation of objects without needing to set initial properties. Each object can have a different class name, parent, and name.
+
+## Parameters
+
+<ParamField path="objects" type="array" required>
+  Array of objects to create. Each object in the array should have:
+  
+  <Expandable title="Object Schema">
+    <ParamField path="className" type="string" required>
+      Roblox class name (e.g., "Part", "Script", "Folder")
+    </ParamField>
+    
+    <ParamField path="parent" type="string" required>
+      Path to the parent instance
+    </ParamField>
+    
+    <ParamField path="name" type="string">
+      Optional name for the object
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Example
+
+```json
+{
+  "objects": [
+    {
+      "className": "Folder",
+      "parent": "game.Workspace",
+      "name": "Levels"
+    },
+    {
+      "className": "Folder",
+      "parent": "game.Workspace.Levels",
+      "name": "Level1"
+    },
+    {
+      "className": "Part",
+      "parent": "game.Workspace.Levels.Level1",
+      "name": "Platform1"
+    },
+    {
+      "className": "Part",
+      "parent": "game.Workspace.Levels.Level1",
+      "name": "Platform2"
+    }
+  ]
+}
+```
+
+## Use Cases
+
+- Rapidly creating folder structures for organizing game content
+- Batch creating placeholder objects for later configuration
+- Building hierarchical structures efficiently
+- Initializing level layouts with multiple objects
+- Automating repetitive object creation tasks
+
+## Related Tools
+
+- [create_object](/api/object-creation/create-object) - Create a single object
+- [mass_create_objects_with_properties](/api/object-creation/mass-create-objects-with-properties) - Create multiple objects with initial properties

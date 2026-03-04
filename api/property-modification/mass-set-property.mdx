@@ -1,0 +1,134 @@
+---
+title: 'mass_set_property'
+description: 'Set the same property on multiple instances at once'
+---
+
+## Overview
+
+The `mass_set_property` tool allows you to efficiently set the same property to the same value across multiple Roblox instances in a single operation. This is ideal for batch updates like hiding multiple parts, anchoring multiple objects, or changing colors across a group.
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to modify. Each path uses dot notation (e.g., `game.Workspace.Part1`)
+</ParamField>
+
+<ParamField path="propertyName" type="string" required>
+  Name of the property to set on all instances (e.g., `Transparency`, `Anchored`)
+</ParamField>
+
+<ParamField path="propertyValue" type="any" required>
+  Value to set the property to. Must match the property's expected type.
+</ParamField>
+
+## Vector3 Limitation
+
+<Warning>
+  **Important**: `mass_set_property` does NOT support Vector3 properties like Position, Size, or Velocity. 
+  
+  For Vector3 properties:
+  - Use individual `set_property` calls for each instance
+  - Or use `set_relative_property` with component-specific operations
+  - Or use `set_calculated_property` for formula-based positioning
+</Warning>
+
+## Data Type Warning
+
+<Info>
+  Property values must match the expected data type:
+  - **Numbers**: Use plain numbers (e.g., `0.5`, `100`)
+  - **Booleans**: Use `true` or `false`
+  - **Strings**: Use quoted strings
+  - **BrickColor**: Use string with BrickColor name
+  - **Vector3**: NOT SUPPORTED - use individual `set_property` calls
+</Info>
+
+## Examples
+
+### Making multiple parts transparent
+
+```json
+{
+  "paths": [
+    "game.Workspace.Part1",
+    "game.Workspace.Part2",
+    "game.Workspace.Part3"
+  ],
+  "propertyName": "Transparency",
+  "propertyValue": 0.5
+}
+```
+
+### Anchoring multiple objects
+
+```json
+{
+  "paths": [
+    "game.Workspace.Platform1",
+    "game.Workspace.Platform2",
+    "game.Workspace.Platform3",
+    "game.Workspace.Platform4"
+  ],
+  "propertyName": "Anchored",
+  "propertyValue": true
+}
+```
+
+### Changing material on multiple parts
+
+```json
+{
+  "paths": [
+    "game.Workspace.Floor",
+    "game.Workspace.Wall1",
+    "game.Workspace.Wall2"
+  ],
+  "propertyName": "Material",
+  "propertyValue": "Neon"
+}
+```
+
+### Disabling CanCollide on multiple parts
+
+```json
+{
+  "paths": [
+    "game.Workspace.Decoration1",
+    "game.Workspace.Decoration2",
+    "game.Workspace.Decoration3"
+  ],
+  "propertyName": "CanCollide",
+  "propertyValue": false
+}
+```
+
+## Performance Considerations
+
+<Tip>
+  Batch operations are significantly faster than individual calls:
+  - **Individual calls**: 10 parts = 10 MCP round-trips
+  - **Mass operation**: 10 parts = 1 MCP round-trip
+  
+  For large numbers of instances (~10-50+), always prefer mass operations.
+</Tip>
+
+## Maximum Batch Size
+
+<Note>
+  While there's no strict limit, it's recommended to process batches of 50-100 instances at a time for optimal performance and error handling.
+</Note>
+
+## Use Cases
+
+- Bulk property changes across level objects
+- Setting default properties for newly created instances
+- Hiding/showing multiple UI elements
+- Batch physics property updates
+- Standardizing colors or materials across objects
+
+## Related Tools
+
+- [set_property](/api/property-modification/set-property) - Set a property on a single instance
+- [mass_get_property](/api/property-modification/mass-get-property) - Get the same property from multiple instances
+- [set_relative_property](/api/property-modification/set-relative-property) - Modify properties relative to current values
+- [batch_operations](/api/advanced/batch-operations) - Execute multiple different operations at once

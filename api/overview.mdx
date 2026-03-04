@@ -1,0 +1,315 @@
+---
+title: 'API Reference Overview'
+description: 'Complete guide to the 53+ MCP tools for Roblox Studio'
+---
+
+## Introduction
+
+Roblox Studio MCP provides **53+ specialized tools** that enable AI assistants to interact with Roblox Studio through the Model Context Protocol (MCP). These tools provide programmatic access to instances, scripts, properties, and all Studio features.
+
+## How to Use Tools
+
+AI assistants can call these tools directly through the MCP interface. Each tool accepts structured parameters and returns JSON responses.
+
+### Example Tool Call
+
+```json
+{
+  "name": "get_file_tree",
+  "arguments": {
+    "path": "game.Workspace"
+  }
+}
+```
+
+### Response Format
+
+All tools return responses in this format:
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "<result data>"
+    }
+  ]
+}
+```
+
+## Tool Categories
+
+### File System (Instance Hierarchy)
+
+These tools operate on Roblox Studio instances (not local filesystem files):
+
+- **get_file_tree** - Get instance hierarchy as a tree structure
+- **search_files** - Search instances by name, class type, or script content
+- **get_project_structure** - Get complete game hierarchy with depth control
+
+### Studio Context
+
+Access Studio information and services:
+
+- **get_place_info** - Get place ID, name, and game settings
+- **get_services** - Get available Roblox services and their children
+- **search_objects** - Find instances by name, class, or properties
+- **get_selection** - Get currently selected objects
+- **set_selection** - Set Studio selection to specific instances
+
+### Properties
+
+Read and modify instance properties:
+
+- **get_instance_properties** - Get all properties of a specific instance
+- **get_instance_children** - Get child instances and their class types
+- **set_property** - Set a property on any instance
+- **mass_set_property** - Set the same property on multiple instances
+- **mass_get_property** - Get the same property from multiple instances
+- **search_by_property** - Find objects with specific property values
+- **get_class_info** - Get available properties/methods for Roblox classes
+
+### Creation & Deletion
+
+Create and remove instances:
+
+- **create_object** - Create a new instance (basic)
+- **create_object_with_properties** - Create instance with initial properties
+- **mass_create_objects** - Create multiple objects at once
+- **mass_create_objects_with_properties** - Create multiple objects with properties
+- **delete_object** - Delete a Roblox instance
+
+### Object Management
+
+Manipulate existing instances:
+
+- **reparent_object** - Move an instance to a new parent
+- **clone_object** - Clone an instance with all children
+- **get_descendants** - Get all descendants with filters
+- **group_objects** - Group instances into a Model or Folder
+- **ungroup_objects** - Dissolve a group
+- **mass_reparent** - Move multiple instances at once
+
+### Smart Duplication
+
+Advanced duplication with automatic variations:
+
+- **smart_duplicate** - Duplicate with positioning, naming, and property variations
+- **mass_duplicate** - Perform multiple smart duplications at once
+
+### Calculated & Relative Properties
+
+Set properties using formulas and operations:
+
+- **set_calculated_property** - Set properties using mathematical formulas
+- **set_relative_property** - Modify properties relative to current values
+
+### Script Management
+
+Manage Roblox scripts (LocalScript, Script, ModuleScript):
+
+- **get_script_source** - Get script source code with line numbers
+- **set_script_source** - Replace entire script source
+- **edit_script_lines** - Replace specific lines in a script
+- **insert_script_lines** - Insert new lines at a specific position
+- **delete_script_lines** - Delete specific lines from a script
+
+### Attributes
+
+Manage Roblox instance attributes:
+
+- **get_attribute** - Get a single attribute value
+- **set_attribute** - Set an attribute value
+- **get_attributes** - Get all attributes on an instance
+- **delete_attribute** - Delete an attribute
+
+### Tags (CollectionService)
+
+Manage CollectionService tags:
+
+- **get_tags** - Get all tags on an instance
+- **add_tag** - Add a tag to an instance
+- **remove_tag** - Remove a tag from an instance
+- **get_tagged** - Get all instances with a specific tag
+
+### Physics & Spatial
+
+Physics and spatial operations:
+
+- **get_bounding_box** - Get axis-aligned bounding box
+- **create_weld** - Create a WeldConstraint between parts
+- **raycast** - Cast a ray and return hit information
+
+### Terrain
+
+Terrain manipulation:
+
+- **fill_terrain** - Fill a region with terrain material
+- **clear_terrain** - Remove terrain in a region
+
+### History
+
+Undo/redo operations:
+
+- **undo** - Undo the last action
+- **redo** - Redo the last undone action
+
+### Batch Operations
+
+Execute multiple operations efficiently:
+
+- **batch_operations** - Execute multiple operations in a single round-trip
+
+### Lua Execution
+
+Execute arbitrary Luau code:
+
+- **execute_lua** - Execute Luau code in Studio with full API access
+
+## Common Patterns and Conventions
+
+### Instance Paths
+
+All tools use **dot notation** for instance paths:
+
+```
+game.Workspace.Part
+game.ServerScriptService.MainScript
+game.ReplicatedStorage.Folder.Module
+```
+
+### Vector3 Format
+
+When setting Vector3 properties, use object format:
+
+```json
+{
+  "X": 0,
+  "Y": 10,
+  "Z": 5
+}
+```
+
+**Do NOT use string format** like `"0, 10, 5"`.
+
+### Color3 Format
+
+```json
+{
+  "R": 1,
+  "G": 0.5,
+  "B": 0
+}
+```
+
+### UDim2 Format
+
+```json
+{
+  "X": {"Scale": 0.5, "Offset": 10},
+  "Y": {"Scale": 0.3, "Offset": 5}
+}
+```
+
+### Script Line Numbers
+
+When using partial script editing tools:
+
+1. Call `get_script_source` to get the script
+2. Use the `numberedSource` field to identify line numbers
+3. Lines are **1-indexed** (first line is line 1)
+4. Ranges are **inclusive** (both start and end lines are included)
+
+## Error Handling
+
+### Common Errors
+
+- **Instance not found** - The specified path doesn't exist
+- **Property not found** - The property doesn't exist on that class
+- **Type mismatch** - Wrong value type for property
+- **Bridge not connected** - Roblox Studio bridge plugin is not running
+
+### Error Response Format
+
+```json
+{
+  "isError": true,
+  "content": [
+    {
+      "type": "text",
+      "text": "Error: Instance not found at path game.Workspace.NonExistent"
+    }
+  ]
+}
+```
+
+## Response Formats
+
+### Success Response
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"success\": true, \"data\": {...}}"
+    }
+  ]
+}
+```
+
+### Data Types
+
+Responses use JSON serialization:
+
+- **Strings** - Direct string values
+- **Numbers** - Numeric values
+- **Booleans** - `true` or `false`
+- **Arrays** - JSON arrays
+- **Objects** - JSON objects
+- **Vector3** - `{"X": number, "Y": number, "Z": number}`
+- **Color3** - `{"R": number, "G": number, "B": number}`
+
+## Performance Tips
+
+### Batch Operations
+
+Use mass operations when possible:
+
+- Use `mass_set_property` instead of multiple `set_property` calls
+- Use `mass_create_objects` for creating multiple instances
+- Use `batch_operations` for mixed operation types
+
+### Depth Control
+
+Limit traversal depth for better performance:
+
+```json
+{
+  "name": "get_project_structure",
+  "arguments": {
+    "maxDepth": 3
+  }
+}
+```
+
+### Filtering
+
+Use filters to reduce returned data:
+
+```json
+{
+  "name": "get_descendants",
+  "arguments": {
+    "instancePath": "game.Workspace",
+    "classFilter": "Part",
+    "maxDepth": 5
+  }
+}
+```
+
+## Next Steps
+
+- Explore specific tools in the category pages
+- See detailed parameter documentation
+- View usage examples for each tool

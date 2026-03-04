@@ -1,0 +1,176 @@
+---
+title: 'mass_get_property'
+description: 'Get the same property from multiple instances at once'
+---
+
+## Overview
+
+The `mass_get_property` tool allows you to efficiently retrieve the same property value from multiple Roblox instances in a single operation. This is useful for inspecting states, gathering data, or validating properties across multiple objects.
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to read from. Each path uses dot notation (e.g., `game.Workspace.Part1`)
+</ParamField>
+
+<ParamField path="propertyName" type="string" required>
+  Name of the property to get from all instances (e.g., `Position`, `Transparency`, `Anchored`)
+</ParamField>
+
+## Vector3 Limitation
+
+<Warning>
+  **Important**: `mass_get_property` does NOT reliably support Vector3 properties. It may return `null` or error.
+  
+  For Vector3 properties (Position, Size, Velocity):
+  - Use individual `get_instance_properties` calls for each instance
+  - This limitation is due to serialization constraints in the MCP bridge
+</Warning>
+
+## Return Format
+
+The tool returns an object mapping each instance path to its property value:
+
+```json
+{
+  "game.Workspace.Part1": 0.5,
+  "game.Workspace.Part2": 0.3,
+  "game.Workspace.Part3": 1.0
+}
+```
+
+## Examples
+
+### Getting transparency from multiple parts
+
+```json
+{
+  "paths": [
+    "game.Workspace.Platform1",
+    "game.Workspace.Platform2",
+    "game.Workspace.Platform3"
+  ],
+  "propertyName": "Transparency"
+}
+```
+
+**Response:**
+```json
+{
+  "game.Workspace.Platform1": 0,
+  "game.Workspace.Platform2": 0.5,
+  "game.Workspace.Platform3": 1
+}
+```
+
+### Checking if multiple parts are anchored
+
+```json
+{
+  "paths": [
+    "game.Workspace.Part1",
+    "game.Workspace.Part2",
+    "game.Workspace.Part3"
+  ],
+  "propertyName": "Anchored"
+}
+```
+
+**Response:**
+```json
+{
+  "game.Workspace.Part1": true,
+  "game.Workspace.Part2": false,
+  "game.Workspace.Part3": true
+}
+```
+
+### Getting names of multiple instances
+
+```json
+{
+  "paths": [
+    "game.Workspace.Model.Part1",
+    "game.Workspace.Model.Part2",
+    "game.Workspace.Model.Part3"
+  ],
+  "propertyName": "Name"
+}
+```
+
+**Response:**
+```json
+{
+  "game.Workspace.Model.Part1": "Platform",
+  "game.Workspace.Model.Part2": "Wall",
+  "game.Workspace.Model.Part3": "Floor"
+}
+```
+
+### Getting CanCollide status
+
+```json
+{
+  "paths": [
+    "game.Workspace.Obstacle1",
+    "game.Workspace.Obstacle2"
+  ],
+  "propertyName": "CanCollide"
+}
+```
+
+**Response:**
+```json
+{
+  "game.Workspace.Obstacle1": true,
+  "game.Workspace.Obstacle2": false
+}
+```
+
+## Performance Benefits
+
+<Tip>
+  Mass property reads are much faster than individual calls:
+  - **Individual calls**: 20 parts = 20 MCP round-trips
+  - **Mass operation**: 20 parts = 1 MCP round-trip
+  
+  This can save significant time when gathering data from large numbers of instances.
+</Tip>
+
+## Error Handling
+
+If a path is invalid or the property doesn't exist on an instance, that entry may return `null` or an error message in the response object.
+
+## Use Cases
+
+- Validating property values across multiple objects
+- Gathering data for calculations or analytics
+- Checking states before performing batch operations
+- Debugging property values across a level
+- Collecting configuration data from multiple instances
+
+## Workaround for Vector3 Properties
+
+If you need to get Vector3 properties from multiple instances:
+
+```javascript
+// Instead of mass_get_property, use individual get_instance_properties calls
+const paths = [
+  "game.Workspace.Part1",
+  "game.Workspace.Part2",
+  "game.Workspace.Part3"
+];
+
+// Make parallel calls (in Node.js or via MCP client)
+const positions = await Promise.all(
+  paths.map(path => getInstanceProperties(path))
+).then(results => 
+  results.map((props, i) => ({ path: paths[i], position: props.Position }))
+);
+```
+
+## Related Tools
+
+- [get_instance_properties](/api/instance/get-instance-properties) - Get all properties of a single instance (supports Vector3)
+- [mass_set_property](/api/property-modification/mass-set-property) - Set the same property on multiple instances
+- [set_property](/api/property-modification/set-property) - Set a property on a single instance

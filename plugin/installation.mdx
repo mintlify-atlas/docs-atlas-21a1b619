@@ -1,0 +1,174 @@
+---
+title: "Plugin Installation"
+description: "Complete guide to installing the Roblox Studio MCP Plugin"
+icon: "download"
+---
+
+Complete your AI assistant integration with this easy-to-install Studio plugin. Works with Claude Code, Claude Desktop, and any MCP-compatible AI.
+
+## Installation Methods
+
+Choose the method that works best for you:
+
+<AccordionGroup>
+  <Accordion title="Method 1: Roblox Creator Store (Easiest)" icon="star">
+    This is the recommended method for most users.
+
+    ### Steps
+
+    1. **Install from Creator Store:**
+       - Visit: [Roblox Studio MCP Plugin](https://create.roblox.com/store/asset/132985143757536)
+       - Click the **"Install"** button
+       - Plugin automatically opens in Studio
+
+    2. **No restart needed** - Plugin appears immediately in your toolbar!
+
+    <Note>
+      The plugin will appear in the Plugins toolbar as "MCP Server"
+    </Note>
+  </Accordion>
+
+  <Accordion title="Method 2: Direct Download" icon="file-arrow-down">
+    Download the plugin file and install manually.
+
+    ### Steps
+
+    1. **Download the plugin:**
+       - **GitHub Release**: [Download MCPPlugin.rbxmx](https://github.com/boshyxd/robloxstudio-mcp/releases/latest/download/MCPPlugin.rbxmx)
+       - This is the official Roblox plugin format
+
+    2. **Install to plugins folder:**
+       - **Windows**: Save to `%LOCALAPPDATA%/Roblox/Plugins/`
+       - **macOS**: Save to `~/Documents/Roblox/Plugins/`
+       - **Or use Studio**: Plugins tab → Plugins Folder → drop the file
+
+    3. **Restart Roblox Studio** - Plugin appears automatically!
+
+    <Tip>
+      You can access your plugins folder directly from Studio:
+      Plugins → Manage Plugins → Open Plugins Folder
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Method 3: Save as Local Plugin" icon="code">
+    Create the plugin directly in Studio from source code.
+
+    ### Steps
+
+    1. **Copy the plugin code:**
+       - Open [plugin.luau](https://github.com/boshyxd/robloxstudio-mcp/blob/main/studio-plugin/plugin.luau) on GitHub
+       - Copy all the code (Ctrl+A, Ctrl+C)
+
+    2. **Create in Studio:**
+       - Open Roblox Studio with any place
+       - Create a new Script in ServerScriptService  
+       - Paste the plugin code
+       - **Right-click script** → **"Save as Local Plugin..."**
+       - Name it "Roblox Studio MCP"
+
+    3. **Plugin appears immediately** in your toolbar!
+
+    <Note>
+      This method is useful for development or if you want to modify the plugin code.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Initial Setup
+
+After installing the plugin, follow these steps:
+
+### 1. Enable HTTP Requests
+
+<Warning>
+  This step is **required** for the plugin to communicate with the MCP server.
+</Warning>
+
+1. Open **Game Settings** (Home → Settings → Game Settings)
+2. Navigate to **Security** tab
+3. Enable **"Allow HTTP Requests"**
+
+### 2. Activate the Plugin
+
+1. Look for the **"MCP Server"** button in your **Plugins toolbar**
+2. Click the button to activate the plugin
+3. A dock widget will appear showing connection status
+
+**Status Indicators:**
+- 🟢 **Green status** = Connected and ready
+- 🔴 **Red status** = Disconnected (normal until MCP server runs)
+- 🟡 **Yellow status** = Waiting for MCP server connection
+
+### 3. Install MCP Server
+
+The plugin requires the MCP server to be running. Choose your AI assistant:
+
+<CodeGroup>
+```bash Claude Code
+claude mcp add robloxstudio-mcp
+```
+
+```json Claude Desktop / Others
+{
+  "mcpServers": {
+    "robloxstudio-mcp": {
+      "command": "npx",
+      "args": ["-y", "robloxstudio-mcp"]
+    }
+  }
+}
+```
+
+```json Windows Native (Alternative)
+{
+  "mcpServers": {
+    "robloxstudio-mcp": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "robloxstudio-mcp@latest"]
+    }
+  }
+}
+```
+</CodeGroup>
+
+<Note>
+  For Windows users experiencing issues, use the native Windows configuration with `cmd`.
+</Note>
+
+## How It Works
+
+The plugin uses a long-polling architecture to communicate with the MCP server:
+
+1. **🤖 AI calls tool** → MCP server queues request
+2. **🔄 Plugin polls** every 500ms for work
+3. **⚙️ Plugin executes** Studio API calls  
+4. **📤 Plugin responds** with extracted data
+5. **✅ AI receives** comprehensive Studio information
+
+**Available Tools:** 15+ specialized tools for file trees, dependencies, properties, project structure, and more!
+
+## Verification
+
+After setup, verify everything is working:
+
+1. **Check Plugin Status**: The dock widget should show "Connected" in green
+2. **Check Connection Steps**:
+   - ✅ 1. HTTP server reachable (OK)
+   - ✅ 2. MCP bridge connected (OK)
+   - ✅ 3. Ready for commands (OK)
+3. **Test with AI**: Ask your AI assistant to list your workspace files
+
+<Success>
+  If all three steps show "OK" with green indicators, your plugin is ready to use!
+</Success>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/plugin/configuration">
+    Customize server URL, polling intervals, and more
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/plugin/troubleshooting">
+    Solve common issues and connection problems
+  </Card>
+</CardGroup>

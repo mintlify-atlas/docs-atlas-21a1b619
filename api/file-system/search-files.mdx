@@ -1,0 +1,364 @@
+---
+title: 'search_files'
+description: 'Search for Roblox instances by name, class type, or script content'
+---
+
+## Overview
+
+The `search_files` tool searches for Roblox instances by name, class type, or script content. It returns matching instances with their paths and relevant information.
+
+<Warning>
+**Important:** This searches Roblox Studio instances, NOT local filesystem files.
+</Warning>
+
+## Parameters
+
+<ParamField path="query" type="string" required>
+  Search query - can be an instance name, class type (e.g., `"Script"`, `"Part"`), or Lua code pattern depending on the `searchType`.
+
+  ### Examples by Search Type
+  
+  **Name searches:**
+  - `"MainScript"` - Find instances named "MainScript"
+  - `"Player"` - Find instances with "Player" in their name
+  
+  **Type searches:**
+  - `"Script"` - Find all Script instances
+  - `"Part"` - Find all Part instances
+  - `"ModuleScript"` - Find all ModuleScripts
+  
+  **Content searches:**
+  - `"function onClick"` - Find scripts containing this function
+  - `"game.Players"` - Find scripts that reference Players service
+  - `"while true do"` - Find scripts with infinite loops
+</ParamField>
+
+<ParamField path="searchType" type="string" default="name">
+  Type of search to perform. Must be one of:
+  
+  - `"name"` - Search by instance name (default)
+  - `"type"` - Search by class name
+  - `"content"` - Search within script source code
+
+  <Accordion title="Search Type Details">
+    **name**: Searches the Name property of all instances. Case-sensitive substring matching.
+    
+    **type**: Searches by ClassName. Use exact class names like "Part", "Script", "Folder", "LocalScript", "ModuleScript".
+    
+    **content**: Searches the Source property of Script, LocalScript, and ModuleScript instances. Uses substring matching in Lua code.
+  </Accordion>
+</ParamField>
+
+## Return Value
+
+Returns an array of matching instances with their information.
+
+<ResponseField name="content" type="array">
+  <ResponseField name="type" type="string">
+    Always `"text"`
+  </ResponseField>
+  <ResponseField name="text" type="string">
+    JSON string containing array of matching instances:
+    
+    ```json
+    [
+      {
+        "name": "MainScript",
+        "className": "Script",
+        "path": "game.ServerScriptService.MainScript",
+        "parent": "game.ServerScriptService"
+      },
+      {
+        "name": "MainScript",
+        "className": "LocalScript",
+        "path": "game.StarterPlayer.StarterPlayerScripts.MainScript",
+        "parent": "game.StarterPlayer.StarterPlayerScripts"
+      }
+    ]
+    ```
+  </ResponseField>
+</ResponseField>
+
+### Match Object Structure
+
+Each match contains:
+
+- **name** (string) - The instance's Name property
+- **className** (string) - The instance's ClassName
+- **path** (string) - Full dot-notation path to the instance
+- **parent** (string) - Path to the parent instance
+
+For content searches, additional fields may be included:
+
+- **matchLine** (number) - Line number where match was found (if applicable)
+- **matchPreview** (string) - Preview of the matching code (if applicable)
+
+## Usage Examples
+
+### Search by Name
+
+Find all instances named "MainScript":
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "MainScript",
+    "searchType": "name"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "[{\"name\":\"MainScript\",\"className\":\"Script\",\"path\":\"game.ServerScriptService.MainScript\",\"parent\":\"game.ServerScriptService\"}]"
+    }
+  ]
+}
+```
+
+### Search by Type
+
+Find all Part instances:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "Part",
+    "searchType": "type"
+  }
+}
+```
+
+Returns all Part instances in the game.
+
+### Search by Type - Scripts
+
+Find all Script instances (server scripts):
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "Script",
+    "searchType": "type"
+  }
+}
+```
+
+### Search by Type - ModuleScripts
+
+Find all ModuleScripts:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "ModuleScript",
+    "searchType": "type"
+  }
+}
+```
+
+### Search Script Content
+
+Find scripts containing a specific function:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "function onClick",
+    "searchType": "content"
+  }
+}
+```
+
+Returns all scripts (Script, LocalScript, ModuleScript) that contain the text "function onClick" in their source code.
+
+### Search for API Usage
+
+Find scripts that use a specific Roblox API:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "game.Players.LocalPlayer",
+    "searchType": "content"
+  }
+}
+```
+
+### Search for Common Patterns
+
+Find scripts with infinite loops:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "while true do",
+    "searchType": "content"
+  }
+}
+```
+
+## Common Use Cases
+
+### 1. Finding Duplicate Names
+
+Search by name to find all instances with the same name:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "Platform",
+    "searchType": "name"
+  }
+}
+```
+
+### 2. Inventory by Type
+
+Get a count of all instances of a specific type:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "LocalScript",
+    "searchType": "type"
+  }
+}
+```
+
+### 3. Code Auditing
+
+Find all scripts using deprecated or problematic code:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "wait()",
+    "searchType": "content"
+  }
+}
+```
+
+### 4. Feature Discovery
+
+Find where a specific feature is implemented:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "PlayerDataManager",
+    "searchType": "name"
+  }
+}
+```
+
+### 5. Refactoring Support
+
+Find all usages of a function or variable:
+
+```json
+{
+  "name": "search_files",
+  "arguments": {
+    "query": "GetPlayerData",
+    "searchType": "content"
+  }
+}
+```
+
+## Related Tools
+
+- **get_file_tree** - Get complete instance hierarchy tree
+- **search_objects** - Alternative search with property-based filtering
+- **get_project_structure** - Get organized project structure
+- **get_script_source** - Get the full source code of found scripts
+- **get_descendants** - Get filtered descendants of an instance
+
+## Performance Considerations
+
+### Search Scope
+
+- **Name searches** - Very fast, searches all instances
+- **Type searches** - Fast, filtered by class name
+- **Content searches** - Slower, must read all script sources
+
+### Large Projects
+
+For very large projects:
+
+- Content searches may take several seconds
+- Consider narrowing searches to specific services
+- Use more specific queries to reduce matches
+
+## Notes
+
+- **Name and Type searches** are case-sensitive
+- **Content searches** perform substring matching (not regex)
+- Empty results return an empty array `[]`
+- The `path` field can be used directly with other tools
+- Content searches only examine Script, LocalScript, and ModuleScript instances
+
+## Error Handling
+
+### Invalid Search Type
+
+If an invalid `searchType` is provided:
+
+```json
+{
+  "isError": true,
+  "content": [
+    {
+      "type": "text",
+      "text": "Error: Invalid searchType. Must be 'name', 'type', or 'content'"
+    }
+  ]
+}
+```
+
+### Bridge Not Connected
+
+If the Roblox Studio bridge plugin is not running:
+
+```json
+{
+  "isError": true,
+  "content": [
+    {
+      "type": "text",
+      "text": "Error: Bridge not connected. Make sure Roblox Studio is open with the MCP bridge plugin installed."
+    }
+  ]
+}
+```
+
+### No Results
+
+When no matches are found, returns an empty array (not an error):
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "[]"
+    }
+  ]
+}
+```

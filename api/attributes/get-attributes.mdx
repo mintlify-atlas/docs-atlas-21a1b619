@@ -1,0 +1,173 @@
+---
+title: Get Attributes
+description: Get all attributes on a Roblox instance at once
+---
+
+# Get Attributes
+
+Retrieve all attributes attached to a Roblox instance. Returns a dictionary of attribute names and their values.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`)
+</ParamField>
+
+## Response
+
+Returns an object containing all attributes:
+```json
+{
+  "attributes": {
+    "Damage": 50,
+    "WeaponName": "Excalibur",
+    "IsLocked": true,
+    "SpawnOffset": {"X": 0, "Y": 5, "Z": 10},
+    "TeamColor": {"R": 1, "G": 0, "B": 0}
+  }
+}
+```
+
+Returns empty object `{}` if no attributes exist.
+
+## Example Usage
+
+### Get All Attributes
+```javascript
+// Get all weapon attributes
+get_attributes("game.Workspace.Sword")
+// Returns:
+// {
+//   "Damage": 50,
+//   "FireRate": 0.5,
+//   "MagazineSize": 30,
+//   "ReloadTime": 2.5,
+//   "WeaponType": "Melee"
+// }
+
+// Get all NPC attributes
+get_attributes("game.Workspace.Zombie")
+// Returns:
+// {
+//   "Health": 100,
+//   "Speed": 16,
+//   "Aggression": 0.8,
+//   "DetectionRange": 50,
+//   "IsAggressive": true
+// }
+```
+
+### Inspect Configuration
+```javascript
+// Get checkpoint attributes
+get_attributes("game.Workspace.Checkpoint1")
+// Returns:
+// {
+//   "LevelNumber": 1,
+//   "RequiredStars": 3,
+//   "IsUnlocked": false,
+//   "RespawnPosition": {"X": 100, "Y": 50, "Z": -200}
+// }
+```
+
+### Audit Game Configuration
+```javascript
+// Get all attributes on multiple instances
+const instances = [
+  "game.Workspace.Weapon1",
+  "game.Workspace.Weapon2",
+  "game.Workspace.Weapon3"
+];
+
+instances.forEach(path => {
+  const attrs = get_attributes(path);
+  console.log(`${path}:`, attrs);
+});
+```
+
+## Use Cases
+
+### Configuration Auditing
+Inspect all configuration values on game objects to verify settings match design specifications.
+
+### Data Migration
+Retrieve all attributes before migrating data to a new system or updating attribute schemas.
+
+### Debugging
+Quickly view all attributes when troubleshooting why an object isn't behaving as expected.
+
+### Cloning with Attributes
+Get all attributes from a source instance before cloning to preserve configuration.
+
+### Documentation Generation
+Extract attribute schemas from example instances to generate configuration documentation.
+
+## Filtering Results
+
+Process results to filter specific attribute types:
+
+```javascript
+// Get only numeric attributes
+const allAttrs = get_attributes("game.Workspace.Weapon");
+const numericAttrs = Object.entries(allAttrs)
+  .filter(([key, value]) => typeof value === 'number')
+  .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+
+// Get only Vector3 attributes
+const vectorAttrs = Object.entries(allAttrs)
+  .filter(([key, value]) => value && typeof value === 'object' && 'X' in value)
+  .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+```
+
+## Performance Considerations
+
+- More efficient than calling `get_attribute` multiple times for different attributes
+- Returns all attributes in a single round-trip
+- Ideal for batch processing or configuration snapshots
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Returns empty object `{}` if instance has no attributes (not an error)
+- Complex types (Vector3, Color3) are returned as objects with named fields
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Get Attribute" icon="eye" href="/api/attributes/get-attribute">
+    Get a single specific attribute
+  </Card>
+  <Card title="Set Attribute" icon="pen" href="/api/attributes/set-attribute">
+    Set or update an attribute value
+  </Card>
+  <Card title="Delete Attribute" icon="trash" href="/api/attributes/delete-attribute">
+    Remove an attribute from an instance
+  </Card>
+</CardGroup>
+
+## Comparison with Individual Queries
+
+### Using get_attributes (Efficient)
+```javascript
+// Single call gets everything
+const attrs = get_attributes("game.Workspace.Sword");
+const damage = attrs.Damage;
+const fireRate = attrs.FireRate;
+const magSize = attrs.MagazineSize;
+```
+
+### Using get_attribute (Inefficient)
+```javascript
+// Three separate calls
+const damage = get_attribute("game.Workspace.Sword", "Damage");
+const fireRate = get_attribute("game.Workspace.Sword", "FireRate");
+const magSize = get_attribute("game.Workspace.Sword", "MagazineSize");
+```
+
+## Notes
+
+- Returns attributes in arbitrary order (not guaranteed to be sorted)
+- Attributes are returned with their original types preserved
+- Complex types maintain their structure (Vector3 as `{X, Y, Z}`, etc.)
+- Empty instances return `{}`, not `null` or error
+- Maximum attributes per instance: ~150 (Roblox limit)

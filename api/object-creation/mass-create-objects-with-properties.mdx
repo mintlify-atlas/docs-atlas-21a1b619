@@ -1,0 +1,94 @@
+---
+title: 'mass_create_objects_with_properties'
+description: 'Create multiple objects at once with initial properties'
+---
+
+## Description
+
+Creates multiple Roblox object instances with initial properties in a single operation. This is the most powerful batch creation tool, allowing you to create fully configured objects efficiently.
+
+## Parameters
+
+<ParamField path="objects" type="array" required>
+  Array of objects to create with properties. Each object in the array should have:
+  
+  <Expandable title="Object Schema">
+    <ParamField path="className" type="string" required>
+      Roblox class name (e.g., "Part", "Script", "Folder")
+    </ParamField>
+    
+    <ParamField path="parent" type="string" required>
+      Path to the parent instance
+    </ParamField>
+    
+    <ParamField path="name" type="string">
+      Optional name for the object
+    </ParamField>
+    
+    <ParamField path="properties" type="object">
+      Properties to set on creation
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Example
+
+```json
+{
+  "objects": [
+    {
+      "className": "Part",
+      "parent": "game.Workspace.Obby.Level_01",
+      "name": "Platform_01",
+      "properties": {
+        "Size": {"X": 10, "Y": 1, "Z": 10},
+        "Position": {"X": 0, "Y": 5, "Z": 0},
+        "Anchored": true,
+        "BrickColor": "Bright green"
+      }
+    },
+    {
+      "className": "Part",
+      "parent": "game.Workspace.Obby.Level_01",
+      "name": "Platform_02",
+      "properties": {
+        "Size": {"X": 10, "Y": 1, "Z": 10},
+        "Position": {"X": 0, "Y": 5, "Z": -15},
+        "Anchored": true,
+        "BrickColor": "Bright blue"
+      }
+    },
+    {
+      "className": "Part",
+      "parent": "game.Workspace.Obby.Level_01",
+      "name": "KillBrick",
+      "properties": {
+        "Size": {"X": 10, "Y": 1, "Z": 10},
+        "Position": {"X": 0, "Y": 5, "Z": -30},
+        "Anchored": true,
+        "BrickColor": "Really red",
+        "Material": "Neon"
+      }
+    }
+  ]
+}
+```
+
+## Use Cases
+
+- Building complete level layouts with fully configured platforms
+- Creating obstacle courses with precise positioning and properties
+- Batch creating UI elements with specific attributes
+- Generating procedural content with calculated properties
+- Automating complex scene setups for games
+- Creating multiple game objects with different configurations
+
+## Performance Notes
+
+This tool is optimized for batch operations. Creating 10 objects with properties using this tool is significantly faster than making 10 separate `create_object_with_properties` calls.
+
+## Related Tools
+
+- [create_object_with_properties](/api/object-creation/create-object-with-properties) - Create a single object with properties
+- [mass_create_objects](/api/object-creation/mass-create-objects) - Create multiple objects without properties
+- [smart_duplicate](/api/object-creation/smart-duplicate) - Duplicate existing objects with variations

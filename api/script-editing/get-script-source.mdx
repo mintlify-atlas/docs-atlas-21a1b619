@@ -1,0 +1,183 @@
+---
+title: 'get_script_source'
+description: 'Read Roblox script source code with line numbers'
+icon: 'file-code'
+---
+
+## Overview
+
+Read the source code of a Roblox script (LocalScript, Script, or ModuleScript) with line numbers for precise editing. Returns both raw source and numbered source for easy line identification.
+
+<Note>
+For large scripts (>1500 lines), use `startLine` and `endLine` parameters to read specific sections and avoid performance issues.
+</Note>
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path to the script using dot notation
+  
+  **Examples:**
+  - `game.ServerScriptService.MainScript`
+  - `game.StarterPlayer.StarterPlayerScripts.LocalScript`
+  - `game.ReplicatedStorage.Modules.DataManager`
+</ParamField>
+
+<ParamField path="startLine" type="number">
+  Start line number (1-indexed) for reading specific sections of large scripts
+  
+  **Default:** Read from beginning
+</ParamField>
+
+<ParamField path="endLine" type="number">
+  End line number (inclusive) for reading specific sections of large scripts
+  
+  **Default:** Read to end
+</ParamField>
+
+## Response
+
+```json
+{
+  "source": "-- Main game script\nlocal Players = game:GetService('Players')\nprint('Game started')",
+  "numberedSource": "1: -- Main game script\n2: local Players = game:GetService('Players')\n3: print('Game started')",
+  "lineCount": 3
+}
+```
+
+<ResponseField name="source" type="string">
+  Raw script source code without line numbers
+</ResponseField>
+
+<ResponseField name="numberedSource" type="string">
+  Script source with line numbers prefixed (format: `lineNumber: code`)
+  
+  **Use this field to identify correct line numbers for editing operations**
+</ResponseField>
+
+<ResponseField name="lineCount" type="number">
+  Total number of lines in the script
+</ResponseField>
+
+## Usage Examples
+
+### Read Entire Script
+
+```json
+{
+  "instancePath": "game.ServerScriptService.MainScript"
+}
+```
+
+### Read Specific Section (Large Scripts)
+
+```json
+{
+  "instancePath": "game.ServerScriptService.LargeScript",
+  "startLine": 100,
+  "endLine": 200
+}
+```
+
+### Example Workflow: Edit a Function
+
+1. **Read script with line numbers:**
+```json
+{
+  "instancePath": "game.ServerScriptService.PlayerHandler"
+}
+```
+
+2. **Identify target lines from numberedSource:**
+```
+45: local function onPlayerJoin(player)
+46:     print('Player joined:', player.Name)
+47: end
+```
+
+3. **Use line numbers for editing (see edit_script_lines)**
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Use numberedSource for Editing">
+    When planning to edit, insert, or delete lines, always reference the `numberedSource` field to identify correct line numbers. The line numbers are 1-indexed and match exactly what the editing tools expect.
+  </Accordion>
+
+  <Accordion title="Read Sections for Large Scripts">
+    For scripts with >1500 lines, read specific sections using `startLine` and `endLine` to improve performance and reduce response size.
+    
+    ```json
+    {
+      "instancePath": "game.ServerScriptService.HugeScript",
+      "startLine": 500,
+      "endLine": 600
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Verify Before Editing">
+    Always read the current source before making edits to ensure you're working with the latest version and correct line numbers.
+  </Accordion>
+
+  <Accordion title="Script Type Support">
+    Works with all Roblox script types:
+    - **Script** (ServerScript)
+    - **LocalScript**
+    - **ModuleScript**
+  </Accordion>
+</AccordionGroup>
+
+## Line Number Format
+
+The `numberedSource` field uses this format:
+
+```
+1: -- First line of code
+2: local variable = 'value'
+3: 
+4: function example()
+5:     print('Hello')
+6: end
+```
+
+- Line numbers are 1-indexed (first line is 1, not 0)
+- Empty lines are counted and numbered
+- Line numbers are followed by `: ` (colon and space)
+- All subsequent editing operations use these exact line numbers
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="set_script_source" icon="arrows-rotate" href="/api/script-editing/set-script-source">
+    Replace entire script source
+  </Card>
+  <Card title="edit_script_lines" icon="pen-to-square" href="/api/script-editing/edit-script-lines">
+    Replace specific line ranges
+  </Card>
+  <Card title="insert_script_lines" icon="plus" href="/api/script-editing/insert-script-lines">
+    Insert new lines at position
+  </Card>
+  <Card title="delete_script_lines" icon="trash" href="/api/script-editing/delete-script-lines">
+    Delete line ranges
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+<ResponseExample>
+```json Error: Script Not Found
+{
+  "error": "Instance not found or is not a script",
+  "instancePath": "game.ServerScriptService.NonExistent"
+}
+```
+
+```json Error: Invalid Line Range
+{
+  "error": "Invalid line range: startLine must be <= endLine",
+  "startLine": 100,
+  "endLine": 50
+}
+```
+</ResponseExample>

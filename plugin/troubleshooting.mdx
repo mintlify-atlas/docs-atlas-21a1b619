@@ -1,0 +1,392 @@
+---
+title: "Plugin Troubleshooting"
+description: "Solve common issues with the Roblox Studio MCP Plugin"
+icon: "wrench"
+---
+
+Common issues and solutions for the Roblox Studio MCP Plugin.
+
+## Connection Issues
+
+<AccordionGroup>
+  <Accordion title="Plugin Shows 'Disconnected' Status" icon="circle-xmark">
+    This is **normal behavior** when the MCP server isn't running.
+
+    ### Solution
+
+    1. **Verify MCP server is installed:**
+       ```bash
+       claude mcp list
+       ```
+       You should see `robloxstudio-mcp` in the list
+
+    2. **Restart your AI assistant** (Claude Code, Claude Desktop, etc.)
+       - The MCP server starts automatically when the AI assistant launches
+
+    3. **Click the "MCP Server" button** in the Plugins toolbar to activate
+
+    4. **Check the status steps** in the plugin dock widget:
+       - Step 1 should show "HTTP server reachable (OK)"
+       - Step 2 should show "MCP bridge connected (OK)"
+       - Step 3 should show "Ready for commands (OK)"
+
+    <Note>
+      The plugin will show "Disconnected" until both Studio and the AI assistant are running.
+    </Note>
+  </Accordion>
+
+  <Accordion title="HTTP 403 Forbidden Errors" icon="ban">
+    This error occurs when HTTP requests are not enabled in your game settings.
+
+    ### Solution
+
+    1. **Open Game Settings:**
+       - Home → Settings → Game Settings
+
+    2. **Navigate to Security tab**
+
+    3. **Enable "Allow HTTP Requests"**
+
+    4. **Restart the plugin:**
+       - Click the "MCP Server" button twice (off then on)
+
+    <Warning>
+      HTTP requests must be enabled for the plugin to communicate with the MCP server.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="HTTP is OK but MCP Won't Connect" icon="clock">
+    If Step 1 shows "OK" but Step 2 stays on "waiting" for more than 8 seconds.
+
+    ### Symptoms
+    - "HTTP: OK  MCP: ..." in status
+    - Yellow warning indicator
+    - Troubleshooting tip appears in widget
+
+    ### Solution
+
+    1. **Close all Node.js processes:**
+       - **Windows**: Open Task Manager → Find all `node.exe` → End Task
+       - **macOS**: Activity Monitor → Search "node" → Force Quit
+
+    2. **Restart your AI assistant** (Claude Code, Claude Desktop, etc.)
+
+    3. **Wait for connection:**
+       - The plugin will automatically reconnect
+       - Status should change to "Connected" within 10 seconds
+
+    <Info>
+      Sometimes Node.js processes stay running after closing the AI assistant. Manually ending them resolves stuck connections.
+    </Info>
+  </Accordion>
+
+  <Accordion title="Connection Lost / Retrying" icon="rotate">
+    The plugin shows "Retrying" status or loses connection during use.
+
+    ### Possible Causes
+    - MCP server crashed or stopped
+    - AI assistant was closed
+    - Network or firewall blocking localhost
+
+    ### Solution
+
+    1. **Check if AI assistant is still running**
+
+    2. **Check Studio Output window** for error messages:
+       - View → Output (or press F9)
+
+    3. **Verify firewall settings:**
+       - Ensure localhost (127.0.0.1) connections are allowed
+       - Check if antivirus is blocking Roblox Studio
+
+    4. **Restart both applications:**
+       - Close Roblox Studio completely
+       - Restart your AI assistant
+       - Reopen Studio and activate plugin
+
+    <Tip>
+      The plugin has exponential backoff and will automatically reconnect when the server is available.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Firewall Blocking Localhost" icon="shield">
+    Windows Firewall or antivirus software may block localhost connections.
+
+    ### Solution
+
+    1. **Check Windows Firewall:**
+       - Control Panel → Windows Defender Firewall → Allow an app
+       - Ensure Roblox Studio is allowed for Private networks
+
+    2. **Check antivirus software:**
+       - Some antivirus programs block localhost HTTP connections
+       - Add exception for `localhost:3002` and `localhost:3001`
+
+    3. **Test localhost connectivity:**
+       ```bash
+       curl http://localhost:3002/poll
+       ```
+       Should return a JSON response (may be empty)
+
+    <Warning>
+      Do not disable Windows Firewall entirely. Only add specific exceptions for Roblox Studio.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Installation Issues
+
+<AccordionGroup>
+  <Accordion title="Plugin Not Showing in Toolbar" icon="eye-slash">
+    The plugin is installed but doesn't appear in the Plugins toolbar.
+
+    ### Solution
+
+    1. **Verify file location:**
+       - **Windows**: `%LOCALAPPDATA%/Roblox/Plugins/`
+       - **macOS**: `~/Documents/Roblox/Plugins/`
+       - File should be named `MCPPlugin.rbxmx` or similar
+
+    2. **Restart Roblox Studio completely:**
+       - Close all Studio windows
+       - Reopen Studio
+
+    3. **Check the Output window** (F9) for error messages:
+       - Errors will appear if the plugin failed to load
+
+    4. **Try alternative installation method:**
+       - If direct download fails, try the "Save as Local Plugin" method
+       - See [Installation Guide](/plugin/installation) for details
+
+    <Note>
+      Plugins only load when Studio starts. They won't appear if added while Studio is running.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Plugin Errors on Load" icon="triangle-exclamation">
+    Studio Output shows errors when the plugin loads.
+
+    ### Common Errors
+
+    **"HTTP 403 Forbidden"**
+    - Enable "Allow HTTP Requests" in Game Settings → Security
+
+    **"Unable to cast value to Object"**
+    - Plugin code may be corrupted
+    - Re-download from [GitHub Releases](https://github.com/boshyxd/robloxstudio-mcp/releases/latest)
+
+    **"ServerScriptService is not a valid member of DataModel"**
+    - Using wrong installation method
+    - Plugin should be in Plugins folder, not ServerScriptService
+
+    ### Solution
+
+    1. **Check the exact error message** in Output window
+
+    2. **Delete the corrupted plugin:**
+       - Go to Plugins folder
+       - Delete the plugin file
+
+    3. **Reinstall using a different method:**
+       - Try Creator Store installation (Method 1)
+       - Or re-download from GitHub (Method 2)
+
+    <Tip>
+      The Output window (F9) shows detailed error messages that help identify the exact issue.
+    </Tip>
+  </Accordion>
+</AccordionGroup>
+
+## Server Configuration Issues
+
+<AccordionGroup>
+  <Accordion title="Wrong Server Port" icon="network-wired">
+    The plugin is trying to connect to the wrong port.
+
+    ### Solution
+
+    1. **Check your MCP server configuration:**
+       - Default port is `3002`
+       - Some setups may use different ports
+
+    2. **Update Server URL in plugin:**
+       - Open plugin dock widget
+       - Connection Settings → Server URL
+       - Change to `http://localhost:YOUR_PORT`
+
+    3. **Verify MCP server is running on that port:**
+       ```bash
+       netstat -an | grep 3002
+       ```
+
+    <Info>
+      The plugin will automatically reconnect when you change the Server URL.
+    </Info>
+  </Accordion>
+
+  <Accordion title="MCP Server Won't Start" icon="power-off">
+    The MCP server fails to start with your AI assistant.
+
+    ### Solution
+
+    1. **Check Node.js installation:**
+       ```bash
+       node --version
+       ```
+       Should show v16 or higher
+
+    2. **Check npx availability:**
+       ```bash
+       npx --version
+       ```
+
+    3. **Manually test MCP server:**
+       ```bash
+       npx -y robloxstudio-mcp@latest
+       ```
+       Should start without errors
+
+    4. **Check AI assistant logs:**
+       - Claude Code: Check extension logs
+       - Claude Desktop: Check console output
+
+    5. **Try alternative configuration:**
+       ```json
+       {
+         "mcpServers": {
+           "robloxstudio-mcp": {
+             "command": "cmd",
+             "args": ["/c", "npx", "-y", "robloxstudio-mcp@latest"]
+           }
+         }
+       }
+       ```
+
+    <Warning>
+      For Windows users: Using `cmd` instead of direct `npx` often resolves startup issues.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Performance Issues
+
+<AccordionGroup>
+  <Accordion title="Slow Response Times" icon="hourglass">
+    The plugin takes a long time to respond to AI requests.
+
+    ### Possible Causes
+    - Large project with many objects
+    - Complex search queries
+    - Network latency
+
+    ### Solution
+
+    1. **Use specific paths instead of scanning entire game:**
+       - Instead of asking for "all scripts", specify a service
+       - Example: "List scripts in ServerScriptService"
+
+    2. **Limit search depth:**
+       - Use maxDepth parameter in queries
+       - Avoid deep recursive searches
+
+    3. **Check Activity Log:**
+       - Open plugin dock widget
+       - Look for slow requests in the log
+       - Response times shown in milliseconds
+
+    4. **Monitor Studio performance:**
+       - View → Stats (or press F3)
+       - Check CPU and memory usage
+
+    <Tip>
+      Most queries should complete in under 1 second. If consistently slower, narrow your search scope.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Plugin Causes Studio to Lag" icon="gauge-high">
+    Studio becomes slow or unresponsive when the plugin is active.
+
+    ### Solution
+
+    1. **Check Activity Log frequency:**
+       - Excessive polling may indicate a problem
+       - Should poll every 500ms when disconnected
+
+    2. **Reduce log verbosity:**
+       - Clear the activity log regularly (X button)
+       - Poll events are already throttled 10:1
+
+    3. **Close plugin when not in use:**
+       - Click "MCP Server" button to deactivate
+       - Stops all background polling
+
+    4. **Check for infinite loops:**
+       - View Studio Output window for errors
+       - Uninstall and reinstall plugin if corrupted
+
+    <Note>
+      The plugin uses long-polling which is very efficient. Lag is usually caused by other factors.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Debug Tools
+
+### Activity Log
+
+The built-in activity log helps diagnose issues:
+
+1. **Open the plugin dock widget**
+2. **Scroll to "Activity Log" section**
+3. **Look for error messages** (red text)
+4. **Check connection events** (blue text)
+5. **Monitor request timing** (cyan and green text)
+
+### Export Log
+
+To share logs for debugging:
+
+1. **Click the "E" (Export) button** in Activity Log
+2. **Open ServerStorage** in Explorer
+3. **Find "MCPActivityLog" StringValue**
+4. **Copy the Value property**
+
+<Tip>
+  You can also click "C" (Copy) to print the log to Output window for easy copying.
+</Tip>
+
+### Studio Output Window
+
+Always check the Output window (F9) for:
+- Plugin errors on load
+- HTTP request failures
+- Lua runtime errors
+- Connection status messages
+
+## Getting Help
+
+If you're still experiencing issues:
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/boshyxd/robloxstudio-mcp/issues">
+    Report bugs or request features
+  </Card>
+  <Card title="Configuration Guide" icon="gear" href="/plugin/configuration">
+    Advanced configuration options
+  </Card>
+  <Card title="Installation Guide" icon="download" href="/plugin/installation">
+    Try a different installation method
+  </Card>
+  <Card title="MCP Server Docs" icon="server" href="/essentials/mcp-server">
+    MCP server troubleshooting
+  </Card>
+</CardGroup>
+
+<Warning>
+  When reporting issues, include:
+  - Operating system (Windows/macOS)
+  - Studio version
+  - AI assistant (Claude Code/Desktop/etc.)
+  - Error messages from Output window
+  - Activity Log export
+</Warning>

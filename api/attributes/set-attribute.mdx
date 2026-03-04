@@ -1,0 +1,186 @@
+---
+title: Set Attribute
+description: Set an attribute value on a Roblox instance with support for Vector3, Color3, and more
+---
+
+# Set Attribute
+
+Set or update an attribute value on a Roblox instance. Supports primitive types (string, number, boolean) and complex types (Vector3, Color3, UDim2, BrickColor).
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`)
+</ParamField>
+
+<ParamField path="attributeName" type="string" required>
+  Name of the attribute to set (max 100 characters)
+</ParamField>
+
+<ParamField path="attributeValue" type="any" required>
+  Value to set. Type depends on the data:
+  - Primitives: `string`, `number`, `boolean`
+  - Vector3: `{X: number, Y: number, Z: number}`
+  - Color3: `{R: number, G: number, B: number}` (0-1 range)
+  - UDim2: `{X: {Scale: number, Offset: number}, Y: {Scale: number, Offset: number}}`
+  - BrickColor: `string` (BrickColor name)
+</ParamField>
+
+<ParamField path="valueType" type="string">
+  Optional type hint for complex types: `"Vector3"`, `"Color3"`, `"UDim2"`, `"BrickColor"`
+</ParamField>
+
+## Response
+
+Returns confirmation object:
+```json
+{
+  "success": true,
+  "message": "Attribute 'AttributeName' set on instance"
+}
+```
+
+## Supported Types
+
+### Primitives
+- **string** — Text values (max 1024 characters)
+- **number** — Integers or floats
+- **boolean** — `true` or `false`
+
+### Vectors
+- **Vector3** — 3D position/size: `{X: 0, Y: 5, Z: 10}`
+- **Vector2** — 2D coordinates: `{X: 100, Y: 200}`
+- **UDim** — UI dimension: `{Scale: 0.5, Offset: 10}`
+- **UDim2** — UI size/position: `{X: {Scale: 1, Offset: 0}, Y: {Scale: 0.5, Offset: 20}}`
+
+### Colors
+- **Color3** — RGB color (0-1 range): `{R: 1, G: 0, B: 0}` for red
+- **BrickColor** — Roblox palette color: `"Bright red"`
+
+### Special
+- **NumberRange** — Min/max range: `{Min: 0, Max: 100}`
+- **Rect** — 2D rectangle: `{Min: {X: 0, Y: 0}, Max: {X: 100, Y: 100}}`
+
+## Example Usage
+
+### Set Primitive Attributes
+```javascript
+// Set damage value
+set_attribute("game.Workspace.Sword", "Damage", 50)
+
+// Set weapon name
+set_attribute("game.Workspace.Sword", "WeaponName", "Excalibur")
+
+// Set locked state
+set_attribute("game.Workspace.Door", "IsLocked", true)
+```
+
+### Set Vector3 Attributes
+```javascript
+// Set spawn offset
+set_attribute(
+  "game.Workspace.SpawnPoint",
+  "SpawnOffset",
+  {X: 0, Y: 5, Z: 10},
+  "Vector3"
+)
+
+// Set checkpoint position
+set_attribute(
+  "game.Workspace.Checkpoint",
+  "RespawnPosition",
+  {X: 100, Y: 50, Z: -200}
+)
+```
+
+### Set Color3 Attributes
+```javascript
+// Set team color (red)
+set_attribute(
+  "game.Workspace.TeamSpawn",
+  "TeamColor",
+  {R: 1, G: 0, B: 0},
+  "Color3"
+)
+
+// Set glow color (cyan)
+set_attribute(
+  "game.Workspace.PowerUp",
+  "GlowColor",
+  {R: 0, G: 1, B: 1}
+)
+```
+
+### Set UDim2 Attributes
+```javascript
+// Set UI size attribute
+set_attribute(
+  "game.StarterGui.ScreenGui.Frame",
+  "OriginalSize",
+  {X: {Scale: 0.5, Offset: 0}, Y: {Scale: 0.3, Offset: 50}},
+  "UDim2"
+)
+```
+
+## Use Cases
+
+### Weapon Configuration
+Store damage, fire rate, magazine size, and reload time on weapon models.
+
+### NPC Behavior
+Save AI parameters like aggression level, patrol radius, and detection range.
+
+### Level Progression
+Mark checkpoints with level numbers, unlock requirements, and completion flags.
+
+### Environmental Effects
+Store effect parameters (particle colors, light intensity) on environmental objects.
+
+### Dynamic UI
+Save original UI positions and sizes before animations for reset functionality.
+
+## Batch Operations
+
+For setting attributes on multiple instances, combine with `mass_set_property` patterns:
+
+```javascript
+// Set damage on all swords
+const swordPaths = [
+  "game.Workspace.Sword1",
+  "game.Workspace.Sword2",
+  "game.Workspace.Sword3"
+];
+
+swordPaths.forEach(path => {
+  set_attribute(path, "Damage", 50);
+});
+```
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Throws error if `attributeName` exceeds 100 characters
+- Throws error if `attributeValue` type is unsupported
+- Throws error if Vector3/Color3 format is invalid
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Get Attribute" icon="eye" href="/api/attributes/get-attribute">
+    Read a single attribute value
+  </Card>
+  <Card title="Get Attributes" icon="list" href="/api/attributes/get-attributes">
+    Get all attributes on an instance
+  </Card>
+  <Card title="Delete Attribute" icon="trash" href="/api/attributes/delete-attribute">
+    Remove an attribute from an instance
+  </Card>
+</CardGroup>
+
+## Notes
+
+- Attributes are replicated from server to client automatically
+- Attribute changes fire `Instance:GetAttributeChangedSignal()` in Lua
+- Attributes are visible and editable in Studio's Properties panel
+- Setting an existing attribute overwrites its value
+- Attributes persist when saving the game file

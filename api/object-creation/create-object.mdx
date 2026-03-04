@@ -1,0 +1,44 @@
+---
+title: 'create_object'
+description: 'Create a new Roblox object instance (basic, without properties)'
+---
+
+## Description
+
+Creates a new Roblox object instance with a specified class name and parent. This is the basic object creation tool that does not set any initial properties.
+
+## Parameters
+
+<ParamField path="className" type="string" required>
+  Roblox class name (e.g., "Part", "Script", "Folder")
+</ParamField>
+
+<ParamField path="parent" type="string" required>
+  Path to the parent instance (e.g., "game.Workspace")
+</ParamField>
+
+<ParamField path="name" type="string">
+  Optional name for the new object. If not provided, Roblox will use the default class name.
+</ParamField>
+
+## Example
+
+```json
+{
+  "className": "Part",
+  "parent": "game.Workspace",
+  "name": "MyPart"
+}
+```
+
+## Use Cases
+
+- Creating basic building blocks like Parts, Folders, or Scripts
+- Quick object instantiation when properties will be set later
+- Building hierarchical structures in the workspace
+- Prototyping and testing object layouts
+
+## Related Tools
+
+- [create_object_with_properties](/api/object-creation/create-object-with-properties) - Create objects with initial properties
+- [mass_create_objects](/api/object-creation/mass-create-objects) - Create multiple objects at once

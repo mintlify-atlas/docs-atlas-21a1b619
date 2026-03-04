@@ -1,0 +1,257 @@
+---
+title: Remove Tag
+description: Remove a CollectionService tag from a Roblox instance
+---
+
+# Remove Tag
+
+Remove a CollectionService tag from a Roblox instance. This operation is permanent until the tag is re-added.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`)
+</ParamField>
+
+<ParamField path="tagName" type="string" required>
+  Name of the tag to remove (case-sensitive)
+</ParamField>
+
+## Response
+
+Returns confirmation object:
+```json
+{
+  "success": true,
+  "message": "Tag 'TagName' removed from instance"
+}
+```
+
+## Example Usage
+
+### Remove Single Tag
+```javascript
+// Remove weapon tag
+remove_tag("game.Workspace.Sword", "Weapon")
+
+// Remove deprecated tag
+remove_tag("game.Workspace.OldEnemy", "OldEnemyType")
+
+// Remove team assignment
+remove_tag("game.Workspace.Soldier", "RedTeam")
+```
+
+### Remove Multiple Tags from One Instance
+```javascript
+// Remove all weapon-related tags
+const swordPath = "game.Workspace.Sword";
+remove_tag(swordPath, "Weapon");
+remove_tag(swordPath, "Melee");
+remove_tag(swordPath, "TwoHanded");
+```
+
+### Batch Remove Tag from Multiple Instances
+```javascript
+// Remove "Deprecated" tag from all old weapons
+const oldWeapons = get_tagged("Deprecated");
+
+oldWeapons.forEach(weaponPath => {
+  remove_tag(weaponPath, "Deprecated");
+});
+```
+
+### Conditional Tag Removal
+```javascript
+// Remove "HighDamage" tag if damage was reduced
+const weapon = "game.Workspace.Sword";
+const damage = get_attribute(weapon, "Damage");
+
+if (damage < 50) {
+  remove_tag(weapon, "HighDamage");
+}
+```
+
+## Use Cases
+
+### State Management
+Remove tags when object state changes (e.g., remove "Burning" when fire extinguishes).
+
+### Team Switching
+Remove old team tag when unit switches teams.
+
+### Tag Migration
+Remove deprecated tags when upgrading to new tag system.
+
+### Conditional Behaviors
+Remove behavior tags when conditions are no longer met (e.g., remove "Aggressive" when NPC calms down).
+
+### Clean Up Test Tags
+Remove temporary tags added during development or testing.
+
+## CollectionService Integration
+
+Removing tags fires signals in Lua:
+
+```lua
+-- Lua script listening for tag removal
+local CollectionService = game:GetService("CollectionService")
+
+CollectionService:GetInstanceRemovedSignal("Enemy"):Connect(function(instance)
+  print("Enemy tag removed from:", instance.Name)
+  -- Clean up enemy behavior
+end)
+```
+
+## Workflow Example
+
+### Team Switching System
+```javascript
+// Switch unit from Red Team to Blue Team
+const unitPath = "game.Workspace.Soldier";
+
+// Remove old team tag
+remove_tag(unitPath, "RedTeam");
+
+// Add new team tag
+add_tag(unitPath, "BlueTeam");
+
+// Update team color attribute
+set_attribute(unitPath, "TeamColor", {R: 0, G: 0, B: 1});
+```
+
+### Tag Cleanup Migration
+```javascript
+// Migrate from old tag system to new tag system
+const instances = get_tagged("OldWeaponTag");
+
+instances.forEach(instancePath => {
+  // Get current tags
+  const currentTags = get_tags(instancePath);
+  
+  // Remove old tag
+  remove_tag(instancePath, "OldWeaponTag");
+  
+  // Add new standardized tags
+  if (currentTags.tags.includes("OldWeaponTag")) {
+    add_tag(instancePath, "Weapon");
+    add_tag(instancePath, "Combat");
+  }
+});
+```
+
+### Dynamic Tag Management
+```javascript
+// Update tags based on attribute changes
+const enemy = "game.Workspace.Zombie";
+const health = get_attribute(enemy, "Health");
+
+if (health <= 0) {
+  // Remove alive state tags
+  remove_tag(enemy, "Aggressive");
+  remove_tag(enemy, "Patrolling");
+  
+  // Add dead state tag
+  add_tag(enemy, "Dead");
+}
+```
+
+## Idempotent Operation
+
+Removing a non-existent tag does NOT throw an error:
+
+```javascript
+// Remove tag that doesn't exist
+remove_tag("game.Workspace.Part", "NonExistentTag"); // No error
+
+// Part's tags remain unchanged
+get_tags("game.Workspace.Part");
+// Returns existing tags, "NonExistentTag" not present
+```
+
+## Safety Considerations
+
+- **No undo**: Once removed, tags can only be restored by adding them again
+- **Script dependencies**: Ensure no scripts depend on the tag before removing
+- **Replication**: Removal replicates to clients automatically
+- **Signals**: Fires `GetInstanceRemovedSignal()` in CollectionService
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Does NOT throw error if tag doesn't exist (idempotent operation)
+- Returns success even if tag was already absent
+- Tag names are case-sensitive (`"Weapon"` ≠ `"weapon"`)
+
+## Verification
+
+Verify removal succeeded:
+
+```javascript
+// Remove tag
+remove_tag("game.Workspace.Part", "Weapon");
+
+// Verify it's gone
+const tags = get_tags("game.Workspace.Part");
+if (!tags.tags.includes("Weapon")) {
+  console.log("Tag successfully removed");
+}
+```
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Get Tags" icon="list" href="/api/tags/get-tags">
+    Get all tags on an instance
+  </Card>
+  <Card title="Add Tag" icon="plus" href="/api/tags/add-tag">
+    Add a CollectionService tag to an instance
+  </Card>
+  <Card title="Get Tagged" icon="search" href="/api/tags/get-tagged">
+    Find all instances with a specific tag
+  </Card>
+</CardGroup>
+
+## Common Patterns
+
+### Replace Tag
+```javascript
+// Replace one tag with another
+remove_tag(instancePath, "OldTag");
+add_tag(instancePath, "NewTag");
+```
+
+### Clear All Tags
+```javascript
+// Remove all tags from an instance
+const tags = get_tags(instancePath);
+tags.tags.forEach(tagName => {
+  remove_tag(instancePath, tagName);
+});
+```
+
+### Toggle Tag
+```javascript
+// Toggle tag on/off
+const tags = get_tags(instancePath);
+if (tags.tags.includes("Active")) {
+  remove_tag(instancePath, "Active");
+} else {
+  add_tag(instancePath, "Active");
+}
+```
+
+## Performance Considerations
+
+- Removing tags is extremely fast (O(1) operation)
+- No performance penalty for removing non-existent tags
+- Ideal for dynamic state management systems
+- More efficient than checking tag existence before removal
+
+## Notes
+
+- Removal is immediate and permanent (until re-added)
+- Fires `CollectionService.GetInstanceRemovedSignal()` in Lua
+- Tags are visible in Studio's Properties panel under "Tags" section
+- Replicates automatically from server to clients
+- Does not trigger undo history (cannot be undone with Ctrl+Z)
+- Can be called multiple times safely (idempotent)

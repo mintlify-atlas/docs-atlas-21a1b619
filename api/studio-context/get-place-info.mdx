@@ -1,0 +1,117 @@
+---
+title: 'get_place_info'
+description: 'Retrieve place ID, name, and game settings from the active Roblox Studio place'
+---
+
+## Overview
+
+The `get_place_info` tool retrieves metadata about the currently open place in Roblox Studio, including the place ID, place name, and various game configuration settings.
+
+## Use Cases
+
+- Verify which place is currently open in Studio
+- Retrieve place ID for publishing or API operations
+- Access game settings and configuration metadata
+- Validate the Studio environment before making changes
+
+## Parameters
+
+This tool takes no parameters.
+
+```json
+{}
+```
+
+## Response Structure
+
+<ResponseField name="placeId" type="number">
+  The unique identifier for the Roblox place
+</ResponseField>
+
+<ResponseField name="placeName" type="string">
+  The name of the place as shown in Roblox Studio
+</ResponseField>
+
+<ResponseField name="gameSettings" type="object">
+  An object containing various game configuration settings and metadata
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "placeId": 123456789,
+  "placeName": "My Awesome Obby",
+  "gameSettings": {
+    "maxPlayers": 50,
+    "genre": "Adventure",
+    "allowPrivateServers": true
+  }
+}
+```
+
+## Usage Examples
+
+### Basic Usage
+
+```javascript
+// Get current place information
+const placeInfo = await mcpClient.callTool('get_place_info', {});
+
+console.log(`Current Place: ${placeInfo.placeName}`);
+console.log(`Place ID: ${placeInfo.placeId}`);
+```
+
+### Validate Place Before Operations
+
+```javascript
+// Ensure you're working on the correct place
+const info = await mcpClient.callTool('get_place_info', {});
+
+if (info.placeId !== expectedPlaceId) {
+  throw new Error(`Wrong place! Expected ${expectedPlaceId}, got ${info.placeId}`);
+}
+
+// Proceed with operations...
+```
+
+### Logging and Debugging
+
+```javascript
+// Log place context at the start of automation
+const place = await mcpClient.callTool('get_place_info', {});
+
+console.log('=== Studio Context ===');
+console.log(`Place: ${place.placeName} (${place.placeId})`);
+console.log(`Settings:`, place.gameSettings);
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Call `get_place_info` at the start of automation workflows to verify the Studio environment and log context for debugging.
+</Tip>
+
+<Warning>
+  If Roblox Studio is not connected or the MCP bridge is not active, this tool will fail. Always ensure Studio is running with the MCP plugin installed.
+</Warning>
+
+<Info>
+  The `gameSettings` object structure may vary depending on your Studio version and place configuration. Always check for the specific properties you need.
+</Info>
+
+## Common Issues
+
+**Issue: Tool returns null or empty data**
+- Ensure Roblox Studio is running and the MCP bridge plugin is active
+- Verify that a place is currently open in Studio (not just a blank project)
+
+**Issue: Place ID is 0**
+- This typically means the place hasn't been saved/published yet
+- Save the place to Roblox to generate a valid place ID
+
+## Related Tools
+
+- [`get_services`](/api/studio-context/get-services) - Get available Roblox services
+- [`get_project_structure`](/api/project/get-project-structure) - Get the complete game hierarchy
+- [`get_selection`](/api/studio-context/get-selection) - Get currently selected objects

@@ -1,0 +1,210 @@
+---
+title: 'set_calculated_property'
+description: 'Set properties using mathematical formulas and variables'
+---
+
+## Overview
+
+The `set_calculated_property` tool allows you to set property values using mathematical formulas. This is powerful for creating patterns, sequences, or calculations based on existing properties or custom variables.
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to modify. Each path uses dot notation (e.g., `game.Workspace.Part1`)
+</ParamField>
+
+<ParamField path="propertyName" type="string" required>
+  Name of the property to set (e.g., `Position`, `Transparency`, `Size`)
+</ParamField>
+
+<ParamField path="formula" type="string" required>
+  Mathematical formula to calculate the property value. Can reference existing properties and variables.
+  
+  Examples:
+  - `"index * 50"` - Multiply instance index by 50
+  - `"Position.Y + 10"` - Add 10 to current Y position
+  - `"size * 2"` - Double a custom variable
+  - `"math.sin(index) * amplitude"` - Sine wave pattern
+</ParamField>
+
+<ParamField path="variables" type="object">
+  Additional variables available in the formula. Optional.
+  
+  Example:
+  ```json
+  {
+    "amplitude": 5,
+    "offset": 100,
+    "scale": 2.5
+  }
+  ```
+</ParamField>
+
+## Built-in Variables
+
+The formula has access to these built-in variables:
+
+- `index` - The index of the current instance in the paths array (0-based)
+- `Position` - Current Position property (for Vector3 operations)
+- `Size` - Current Size property
+- Any current property of the instance can be referenced by name
+- `math` - Lua math library (sin, cos, abs, floor, ceil, etc.)
+
+## Vector3 Handling
+
+When setting Vector3 properties, you can:
+
+1. **Calculate entire Vector3**: Return an object
+   ```json
+   "formula": "{X = index * 10, Y = 5, Z = -index * 20}"
+   ```
+
+2. **Calculate single component**: Use component notation
+   ```json
+   "propertyName": "Position",
+   "formula": "Position.Y + (index * 5)"
+   ```
+
+3. **Reference Vector3 properties**: Access X, Y, Z components
+   ```json
+   "formula": "Position.magnitude * 2"
+   ```
+
+## Examples
+
+### Sequential positioning
+
+Place platforms at increasing distances:
+
+```json
+{
+  "paths": [
+    "game.Workspace.Platform1",
+    "game.Workspace.Platform2",
+    "game.Workspace.Platform3"
+  ],
+  "propertyName": "Position",
+  "formula": "{X = 0, Y = 5, Z = -index * 50}"
+}
+```
+
+### Creating a transparency gradient
+
+```json
+{
+  "paths": [
+    "game.Workspace.Part1",
+    "game.Workspace.Part2",
+    "game.Workspace.Part3",
+    "game.Workspace.Part4"
+  ],
+  "propertyName": "Transparency",
+  "formula": "index * 0.25"
+}
+```
+
+Result: Part1=0, Part2=0.25, Part3=0.5, Part4=0.75
+
+### Sine wave pattern
+
+```json
+{
+  "paths": [
+    "game.Workspace.Step1",
+    "game.Workspace.Step2",
+    "game.Workspace.Step3"
+  ],
+  "propertyName": "Position",
+  "formula": "{X = index * spacing, Y = baseHeight + math.sin(index * freq) * amplitude, Z = 0}",
+  "variables": {
+    "spacing": 10,
+    "baseHeight": 5,
+    "freq": 0.5,
+    "amplitude": 3
+  }
+}
+```
+
+### Scaling based on position
+
+```json
+{
+  "paths": [
+    "game.Workspace.Part1",
+    "game.Workspace.Part2",
+    "game.Workspace.Part3"
+  ],
+  "propertyName": "Size",
+  "formula": "{X = baseSize * (1 + index * 0.2), Y = baseSize, Z = baseSize}",
+  "variables": {
+    "baseSize": 4
+  }
+}
+```
+
+### Relative height adjustment
+
+```json
+{
+  "paths": [
+    "game.Workspace.Platform1",
+    "game.Workspace.Platform2",
+    "game.Workspace.Platform3"
+  ],
+  "propertyName": "Position",
+  "formula": "{X = Position.X, Y = Position.Y + (index * heightIncrement), Z = Position.Z}",
+  "variables": {
+    "heightIncrement": 2.5
+  }
+}
+```
+
+### Alternating pattern
+
+```json
+{
+  "paths": [
+    "game.Workspace.Light1",
+    "game.Workspace.Light2",
+    "game.Workspace.Light3",
+    "game.Workspace.Light4"
+  ],
+  "propertyName": "Brightness",
+  "formula": "(index % 2 == 0) and maxBright or minBright",
+  "variables": {
+    "maxBright": 1,
+    "minBright": 0.2
+  }
+}
+```
+
+## Use Cases
+
+- Creating evenly spaced object patterns
+- Generating gradients (transparency, color, size)
+- Building staircases with calculated heights
+- Creating wave or spiral patterns
+- Applying mathematical sequences to properties
+- Generating procedural variations
+
+## Formula Tips
+
+<Tip>
+  - Use `index` for sequence-based calculations
+  - Access current property values directly by name
+  - Lua math functions are available via `math.function()`
+  - For Vector3 results, use table notation: `{X = expr, Y = expr, Z = expr}`
+  - Use ternary operators for conditional values: `(condition) and valueIfTrue or valueIfFalse`
+</Tip>
+
+## Error Handling
+
+<Warning>
+  If the formula has syntax errors or references undefined variables, the operation will fail. Always test formulas on a small subset of instances first.
+</Warning>
+
+## Related Tools
+
+- [set_relative_property](/api/property-modification/set-relative-property) - Simpler relative modifications
+- [mass_set_property](/api/property-modification/mass-set-property) - Set same value on multiple instances
+- [set_property](/api/property-modification/set-property) - Set a single instance property

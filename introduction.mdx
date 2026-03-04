@@ -1,0 +1,177 @@
+---
+title: Introduction
+description: AI-powered Roblox Studio integration with 53+ specialized tools for building, debugging, and managing Roblox games through natural language
+---
+
+# Roblox Studio MCP Server
+
+Connect AI assistants like Claude directly to Roblox Studio for intelligent game development. Use natural language to explore projects, edit scripts, manipulate properties, and perform bulk operations.
+
+<Note>
+  **Enhanced Fork v2.0.0** — This is an enhanced version of the original [boshyxd/robloxstudio-mcp](https://github.com/boshyxd/robloxstudio-mcp) with long polling, 16 new tools, Vector3 fixes, and a battle-tested plugin.
+</Note>
+
+## What is Roblox Studio MCP?
+
+Roblox Studio MCP is a Model Context Protocol (MCP) server that bridges AI assistants with Roblox Studio. It enables you to:
+
+- **Explore projects** through natural language queries
+- **Edit scripts** without leaving your AI chat
+- **Manipulate instances** with intelligent property operations
+- **Perform bulk operations** across hundreds of objects at once
+- **Analyze game structure** to understand complex hierarchies
+- **Debug and refactor** with AI-powered insights
+
+## Problems It Solves
+
+### Manual Repetitive Tasks
+Stop clicking through Studio's UI for repetitive tasks. Use AI to set properties on 50 parts at once, duplicate objects with variations, or find all instances with specific attributes.
+
+### Understanding Complex Projects
+Navigate large game architectures instantly. Ask your AI to "show me all scripts in ServerStorage" or "find all Parts with CanCollide false" and get structured results.
+
+### Script Management
+Read, edit, and analyze Lua scripts directly through your AI assistant. No more copy-pasting between Studio and your chat.
+
+### Debugging and Refactoring
+Find broken references, validate dependencies, search for property values, and get AI-powered suggestions for fixing issues.
+
+## Key Features
+
+### 53+ Specialized Tools
+
+The MCP server exposes 53+ tools organized into categories:
+
+- **File System Tools** — Navigate instance hierarchies, search by name/type/content
+- **Studio Context Tools** — Access place info, services, selection state
+- **Property Tools** — Get/set properties with full type support (Vector3, Color3, etc.)
+- **Mass Operations** — Bulk property editing, batch creation, calculated formulas
+- **Script Editing** — Read/write/edit scripts with line-level precision
+- **Attribute & Tag Management** — Full CollectionService and attribute support
+- **Smart Duplication** — Clone with naming patterns, position offsets, property variations
+- **Batch Operations** — Execute multiple operations in a single round-trip
+
+### Long Polling Architecture
+
+Unlike the original 500ms interval polling, this fork uses **long polling** for instant response times:
+
+- AI requests are queued immediately
+- Plugin polls for work and holds connection until data is ready
+- Results stream back instantly
+- 30-second timeouts with exponential backoff
+
+### Enhanced Activity Logger
+
+Built-in activity panel shows:
+- Real-time tool execution log
+- Copy/export functionality for debugging
+- Connection status indicators
+- Error tracking and diagnostics
+
+### Vector3 Property Fix
+
+Fixed mass operations with Vector3 properties:
+- Original: `"0, 5, -80"` (broken)
+- Enhanced: `{"X": 0, "Y": 5, "Z": -80}` (works correctly)
+
+### Battle-Tested Plugin
+
+Production-ready plugin with:
+- Robust error handling and retry logic
+- Visual status indicators (green = connected, red = disconnected)
+- HTTP request configuration helpers
+- Debug logging to Output window
+
+## Who Should Use It?
+
+### Game Developers
+Speed up development with AI-powered asset manipulation, script generation, and project exploration.
+
+### Technical Artists
+Batch-edit properties across hundreds of objects, duplicate with variations, and prototype faster.
+
+### Code Reviewers
+Analyze script dependencies, find bugs, validate references, and understand complex codebases.
+
+### Educators & Students
+Learn Roblox development with an AI tutor that can read your game structure and provide contextual guidance.
+
+### Solo & Team Projects
+Whether building alone or collaborating, reduce manual work and focus on creative decisions.
+
+## Architecture
+
+Dual-component system:
+
+1. **MCP Server** (Node.js/TypeScript) — Runs on your machine, exposes tools to AI assistants
+2. **Studio Plugin** (Luau) — Runs inside Roblox Studio, executes API calls and returns data
+3. **HTTP Bridge** (localhost:3002) — Request/response queue with UUID tracking
+
+The AI calls a tool → MCP server queues request → Plugin polls for work → Executes Studio API → Returns data → AI receives result.
+
+## What's New in v2.0.0
+
+| Feature | Original | Enhanced Fork |
+|---------|----------|---------------|
+| **Polling** | 500ms interval | Long polling (instant) |
+| **Tools** | 37 tools | 53+ tools (16 new) |
+| **Vector3** | Broken on mass ops | Fixed (`{X, Y, Z}` format) |
+| **Activity Logger** | None | Full UI with copy/export |
+| **Plugin UI** | Basic status | Enhanced status + activity panel |
+| **Batch Operations** | Limited | New `batch_operations` tool |
+| **Object Management** | Basic | +reparent, clone, get_descendants |
+
+## Getting Started
+
+Ready to connect AI to Roblox Studio?
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get from zero to first AI command in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed setup for MCP server and Studio plugin
+  </Card>
+</CardGroup>
+
+## Example Usage
+
+```javascript
+// Get service overview
+get_project_structure()
+
+// Explore weapons folder with depth
+get_project_structure("game.ServerStorage.Weapons", maxDepth=5)
+
+// Find all Sound objects
+search_by_property("ClassName", "Sound")
+
+// Edit script with AI
+get_script_source("game.ServerScriptService.MainScript")
+edit_script_lines("game.ServerScriptService.MainScript", 10, 15, "-- AI-generated code")
+
+// Mass property update
+mass_set_property(
+  ["game.Workspace.Part1", "game.Workspace.Part2"],
+  "BrickColor",
+  "Really red"
+)
+
+// Smart duplication
+smart_duplicate(
+  "game.Workspace.Platform",
+  count=10,
+  options={
+    namePattern: "Platform{n}",
+    positionOffset: [5, 0, 0]
+  }
+)
+```
+
+## Open Source & Community
+
+Roblox Studio MCP is MIT licensed and open source. Contributions, bug reports, and feature requests are welcome!
+
+- **GitHub**: [boshyxd/robloxstudio-mcp](https://github.com/boshyxd/robloxstudio-mcp)
+- **Issues**: [Report bugs](https://github.com/boshyxd/robloxstudio-mcp/issues)
+- **License**: MIT — Free for commercial and personal use

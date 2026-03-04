@@ -1,0 +1,233 @@
+---
+title: Add Tag
+description: Add a CollectionService tag to a Roblox instance
+---
+
+# Add Tag
+
+Add a CollectionService tag to a Roblox instance. Tags are string labels used to categorize instances and query them efficiently.
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Roblox instance path using dot notation (e.g., `"game.Workspace.Part"`)
+</ParamField>
+
+<ParamField path="tagName" type="string" required>
+  Name of the tag to add (max 100 characters, case-sensitive)
+</ParamField>
+
+## Response
+
+Returns confirmation object:
+```json
+{
+  "success": true,
+  "message": "Tag 'TagName' added to instance"
+}
+```
+
+## Example Usage
+
+### Add Single Tag
+```javascript
+// Tag a weapon
+add_tag("game.Workspace.Sword", "Weapon")
+
+// Tag an enemy
+add_tag("game.Workspace.Zombie", "Enemy")
+
+// Tag a collectible
+add_tag("game.Workspace.Coin", "Collectible")
+```
+
+### Add Multiple Tags to One Instance
+```javascript
+// Tag a sword with multiple categories
+const swordPath = "game.Workspace.Sword";
+add_tag(swordPath, "Weapon");
+add_tag(swordPath, "Melee");
+add_tag(swordPath, "Legendary");
+add_tag(swordPath, "TwoHanded");
+```
+
+### Batch Tag Multiple Instances
+```javascript
+// Tag all weapons in workspace
+const weaponPaths = [
+  "game.Workspace.Sword",
+  "game.Workspace.Gun",
+  "game.Workspace.Bow"
+];
+
+weaponPaths.forEach(path => {
+  add_tag(path, "Weapon");
+});
+```
+
+### Conditional Tagging
+```javascript
+// Tag high-value items
+const item = "game.Workspace.DiamondSword";
+const damage = get_attribute(item, "Damage");
+
+if (damage > 100) {
+  add_tag(item, "HighDamage");
+  add_tag(item, "Legendary");
+}
+```
+
+## Use Cases
+
+### Gameplay Systems
+Tag instances to mark them as part of specific systems (weapons, enemies, interactables).
+
+### AI Targeting
+Tag objects that AI should interact with (patrol points, cover positions, objectives).
+
+### Event Listeners
+Use tags to identify instances that should respond to game events (destructible objects, flammable items).
+
+### Team Assignment
+Tag units with team affiliations for faction-based gameplay.
+
+### Level Design
+Mark spawn points, checkpoints, and triggers with tags for easy querying.
+
+## CollectionService Integration
+
+Tags integrate with Roblox's `CollectionService` API:
+
+```lua
+-- Lua script listening for tagged instances
+local CollectionService = game:GetService("CollectionService")
+
+-- Get all instances with "Weapon" tag
+local weapons = CollectionService:GetTagged("Weapon")
+
+for _, weapon in pairs(weapons) do
+  print("Found weapon:", weapon.Name)
+end
+
+-- Listen for new tagged instances
+CollectionService:GetInstanceAddedSignal("Enemy"):Connect(function(instance)
+  print("New enemy spawned:", instance.Name)
+end)
+```
+
+## Tag Naming Conventions
+
+### Best Practices
+- Use **PascalCase**: `"RedTeam"`, `"HighDamage"`, `"Collectible"`
+- Be **descriptive**: `"WeaponMelee"` instead of `"WM"`
+- Use **namespaces** for systems: `"AI:Aggressive"`, `"System:Physics"`
+- Avoid spaces: `"RedTeam"` instead of `"Red Team"`
+
+### Common Tag Patterns
+```javascript
+// Gameplay categories
+add_tag(instance, "Weapon");
+add_tag(instance, "Enemy");
+add_tag(instance, "Collectible");
+add_tag(instance, "Interactable");
+
+// Weapon types
+add_tag(instance, "WeaponMelee");
+add_tag(instance, "WeaponRanged");
+add_tag(instance, "WeaponMagic");
+
+// Enemy types
+add_tag(instance, "EnemyUndead");
+add_tag(instance, "EnemyBoss");
+add_tag(instance, "EnemyPassive");
+
+// Team assignment
+add_tag(instance, "RedTeam");
+add_tag(instance, "BlueTeam");
+
+// Special properties
+add_tag(instance, "Destructible");
+add_tag(instance, "Flammable");
+add_tag(instance, "Explosive");
+```
+
+## Idempotent Operation
+
+Adding a tag that already exists does NOT throw an error:
+
+```javascript
+// Add tag twice
+add_tag("game.Workspace.Part", "Weapon");
+add_tag("game.Workspace.Part", "Weapon"); // No error, no duplicate
+
+// Part still has only one "Weapon" tag
+get_tags("game.Workspace.Part");
+// Returns: { "tags": ["Weapon"] }
+```
+
+## Workflow Example
+
+### Dynamic Tag System
+```javascript
+// Tag all parts in a model based on their properties
+const modelPath = "game.Workspace.WeaponRack";
+const children = get_instance_children(modelPath);
+
+children.forEach(childPath => {
+  // Get part properties
+  const props = get_instance_properties(childPath);
+  
+  // Tag based on class
+  if (props.ClassName === "Part") {
+    add_tag(childPath, "PhysicsPart");
+  }
+  
+  // Tag based on properties
+  if (props.CanCollide === false) {
+    add_tag(childPath, "NonCollidable");
+  }
+  
+  // Tag based on attributes
+  const damage = get_attribute(childPath, "Damage");
+  if (damage && damage > 50) {
+    add_tag(childPath, "HighDamage");
+  }
+});
+```
+
+## Error Handling
+
+- Throws error if `instancePath` is invalid or instance doesn't exist
+- Throws error if `tagName` exceeds 100 characters
+- Does NOT throw error if tag already exists (idempotent)
+- Tag names are case-sensitive (`"Weapon"` and `"weapon"` are different)
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Get Tags" icon="list" href="/api/tags/get-tags">
+    Get all tags on an instance
+  </Card>
+  <Card title="Remove Tag" icon="minus" href="/api/tags/remove-tag">
+    Remove a tag from an instance
+  </Card>
+  <Card title="Get Tagged" icon="search" href="/api/tags/get-tagged">
+    Find all instances with a specific tag
+  </Card>
+</CardGroup>
+
+## Performance Considerations
+
+- Adding tags is extremely fast (O(1) operation)
+- Tags are indexed for efficient querying with `get_tagged`
+- No performance penalty for having many tags on one instance
+- Recommended for gameplay systems requiring fast categorization
+
+## Notes
+
+- Tags are visible in Studio's Properties panel under "Tags" section
+- Tags replicate from server to client automatically
+- Adding a tag fires `CollectionService.GetInstanceAddedSignal()` in Lua
+- Tags persist when saving the game file
+- One instance can have unlimited tags (practical limit ~100)
+- Tags cannot contain special characters (stick to alphanumeric + underscore)

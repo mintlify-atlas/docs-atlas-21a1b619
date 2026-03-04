@@ -1,122 +1,159 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Roblox Studio MCP",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#848c8e",
+    "light": "#11161e",
+    "dark": "#cfd0d2"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/2b01fe20-c04b-4a1d-a2f9-1d2789c50a7a.jpg",
+  "logo": {
+    "light": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg",
+    "dark": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/code-and-relax/robloxstudio-mcp"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/code-and-relax/robloxstudio-mcp"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/architecture",
+              "concepts/communication-protocol",
+              "concepts/plugin-system"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Plugin Setup",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "plugin/installation",
+              "plugin/configuration",
+              "plugin/troubleshooting"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Development",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "development/setup",
+              "development/testing",
+              "development/plugin-development"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "api/overview"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "File System Tools",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/file-system/get-file-tree",
+              "api/file-system/search-files"
+            ]
+          },
+          {
+            "group": "Studio Context Tools",
+            "pages": [
+              "api/studio-context/get-place-info",
+              "api/studio-context/get-services",
+              "api/studio-context/search-objects",
+              "api/studio-context/get-selection"
+            ]
+          },
+          {
+            "group": "Instance & Property Tools",
+            "pages": [
+              "api/instance-property/get-instance-properties",
+              "api/instance-property/get-instance-children",
+              "api/instance-property/search-by-property",
+              "api/instance-property/get-class-info"
+            ]
+          },
+          {
+            "group": "Property Modification Tools",
+            "pages": [
+              "api/property-modification/set-property",
+              "api/property-modification/mass-set-property",
+              "api/property-modification/mass-get-property",
+              "api/property-modification/set-calculated-property",
+              "api/property-modification/set-relative-property"
+            ]
+          },
+          {
+            "group": "Object Creation Tools",
+            "pages": [
+              "api/object-creation/create-object",
+              "api/object-creation/create-object-with-properties",
+              "api/object-creation/mass-create-objects",
+              "api/object-creation/mass-create-objects-with-properties",
+              "api/object-creation/delete-object",
+              "api/object-creation/smart-duplicate",
+              "api/object-creation/mass-duplicate"
+            ]
+          },
+          {
+            "group": "Script Editing Tools",
+            "pages": [
+              "api/script-editing/get-script-source",
+              "api/script-editing/set-script-source",
+              "api/script-editing/edit-script-lines",
+              "api/script-editing/insert-script-lines",
+              "api/script-editing/delete-script-lines"
+            ]
+          },
+          {
+            "group": "Attribute Tools",
+            "pages": [
+              "api/attributes/get-attribute",
+              "api/attributes/set-attribute",
+              "api/attributes/get-attributes",
+              "api/attributes/delete-attribute"
+            ]
+          },
+          {
+            "group": "Tag Tools",
+            "pages": [
+              "api/tags/get-tags",
+              "api/tags/add-tag",
+              "api/tags/remove-tag",
+              "api/tags/get-tagged"
+            ]
+          },
+          {
+            "group": "Project Analysis Tools",
+            "pages": [
+              "api/project-analysis/get-project-structure"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

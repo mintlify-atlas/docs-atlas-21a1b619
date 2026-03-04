@@ -1,0 +1,271 @@
+---
+title: 'set_relative_property'
+description: 'Modify properties relative to their current values'
+---
+
+## Overview
+
+The `set_relative_property` tool allows you to modify properties based on their current values using mathematical operations. Instead of setting absolute values, you can add, multiply, subtract, divide, or raise properties to powers.
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to modify. Each path uses dot notation (e.g., `game.Workspace.Part1`)
+</ParamField>
+
+<ParamField path="propertyName" type="string" required>
+  Name of the property to modify (e.g., `Position`, `Transparency`, `Size`)
+</ParamField>
+
+<ParamField path="operation" type="string" required>
+  Mathematical operation to perform on the current value:
+  - `add` - Add value to current value
+  - `subtract` - Subtract value from current value
+  - `multiply` - Multiply current value by value
+  - `divide` - Divide current value by value
+  - `power` - Raise current value to the power of value
+</ParamField>
+
+<ParamField path="value" type="number" required>
+  Value to use in the operation. Must be a number.
+</ParamField>
+
+<ParamField path="component" type="string">
+  For Vector3 or UDim2 properties, specify which component to modify:
+  - `X` - Modify only X component
+  - `Y` - Modify only Y component
+  - `Z` - Modify only Z component (Vector3 only)
+  
+  If omitted, the operation applies to all components.
+</ParamField>
+
+## Vector3 Component Operations
+
+When working with Vector3 properties (Position, Size, Velocity), you can:
+
+1. **Modify all components**: Omit the `component` parameter
+   ```json
+   {"operation": "multiply", "value": 2}
+   ```
+   Result: All X, Y, Z values are doubled
+
+2. **Modify specific component**: Use `component` parameter
+   ```json
+   {"operation": "add", "value": 5, "component": "Y"}
+   ```
+   Result: Only Y value increases by 5
+
+## Examples
+
+### Moving parts up (Y axis)
+
+```json
+{
+  "paths": [
+    "game.Workspace.Platform1",
+    "game.Workspace.Platform2",
+    "game.Workspace.Platform3"
+  ],
+  "propertyName": "Position",
+  "operation": "add",
+  "value": 10,
+  "component": "Y"
+}
+```
+
+Adds 10 studs to the Y position of each platform.
+
+### Doubling part sizes
+
+```json
+{
+  "paths": [
+    "game.Workspace.Cube1",
+    "game.Workspace.Cube2"
+  ],
+  "propertyName": "Size",
+  "operation": "multiply",
+  "value": 2
+}
+```
+
+Doubles all dimensions (X, Y, Z) of each part.
+
+### Increasing transparency
+
+```json
+{
+  "paths": [
+    "game.Workspace.Window1",
+    "game.Workspace.Window2"
+  ],
+  "propertyName": "Transparency",
+  "operation": "add",
+  "value": 0.3
+}
+```
+
+Makes parts 30% more transparent.
+
+### Shifting along Z axis
+
+```json
+{
+  "paths": [
+    "game.Workspace.Step1",
+    "game.Workspace.Step2",
+    "game.Workspace.Step3"
+  ],
+  "propertyName": "Position",
+  "operation": "subtract",
+  "value": 50,
+  "component": "Z"
+}
+```
+
+Moves all steps 50 studs in the negative Z direction.
+
+### Scaling only width
+
+```json
+{
+  "paths": [
+    "game.Workspace.Bridge1",
+    "game.Workspace.Bridge2"
+  ],
+  "propertyName": "Size",
+  "operation": "multiply",
+  "value": 1.5,
+  "component": "X"
+}
+```
+
+Increases only the X dimension by 50%.
+
+### Halving a numeric property
+
+```json
+{
+  "paths": [
+    "game.Workspace.Light1",
+    "game.Workspace.Light2"
+  ],
+  "propertyName": "Brightness",
+  "operation": "divide",
+  "value": 2
+}
+```
+
+Reduces brightness to half of current value.
+
+### Moving back along path (negative Z)
+
+```json
+{
+  "paths": [
+    "game.Workspace.Obstacle1",
+    "game.Workspace.Obstacle2",
+    "game.Workspace.Obstacle3"
+  ],
+  "propertyName": "Position",
+  "operation": "add",
+  "value": -20,
+  "component": "Z"
+}
+```
+
+Shifts all obstacles 20 studs backward (negative Z).
+
+## Operation Reference
+
+### Add
+```
+newValue = currentValue + value
+```
+Useful for: Offsets, increments, adjustments
+
+### Subtract
+```
+newValue = currentValue - value
+```
+Useful for: Reducing values, moving backward
+
+### Multiply
+```
+newValue = currentValue * value
+```
+Useful for: Scaling, doubling/tripling, percentages
+
+### Divide
+```
+newValue = currentValue / value
+```
+Useful for: Halving, reducing scale, normalizing
+
+### Power
+```
+newValue = currentValue ^ value
+```
+Useful for: Exponential growth, special effects
+
+## Use Cases
+
+- Batch position adjustments (moving multiple objects)
+- Uniform scaling of multiple parts
+- Incremental transparency changes
+- Adjusting physics properties (friction, density)
+- Offsetting UI elements
+- Fine-tuning placement after duplication
+
+## Performance Benefits
+
+<Tip>
+  Relative property operations are efficient because:
+  - Single MCP round-trip for multiple instances
+  - No need to retrieve current values manually
+  - Automatic handling of Vector3 component math
+  - Batch processing on the Roblox Studio side
+</Tip>
+
+## Common Patterns
+
+### Raising all platforms
+```json
+{"propertyName": "Position", "operation": "add", "value": 5, "component": "Y"}
+```
+
+### Lowering all platforms
+```json
+{"propertyName": "Position", "operation": "subtract", "value": 5, "component": "Y"}
+```
+
+### Doubling all sizes
+```json
+{"propertyName": "Size", "operation": "multiply", "value": 2}
+```
+
+### Making more transparent
+```json
+{"propertyName": "Transparency", "operation": "add", "value": 0.2}
+```
+
+### Making less transparent
+```json
+{"propertyName": "Transparency", "operation": "subtract", "value": 0.2}
+```
+
+## Warnings
+
+<Warning>
+  Be careful with operations that can produce invalid values:
+  - Transparency must stay between 0 and 1
+  - Division by zero will cause errors
+  - Very large multiplications may produce extreme values
+  - Always validate ranges before batch operations
+</Warning>
+
+## Related Tools
+
+- [set_calculated_property](/api/property-modification/set-calculated-property) - More complex formula-based modifications
+- [mass_set_property](/api/property-modification/mass-set-property) - Set absolute values on multiple instances
+- [set_property](/api/property-modification/set-property) - Set a single instance property

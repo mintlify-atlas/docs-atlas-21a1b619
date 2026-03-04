@@ -1,80 +1,276 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get from zero to your first AI-powered Roblox Studio interaction in 5 minutes
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
+This guide gets you from zero to running AI commands in Roblox Studio in under 5 minutes.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- **Roblox Studio** installed and running
+- **MCP-compatible AI client** (Claude Code, Claude Desktop, etc.)
+- **Node.js** installed (for npx command)
 
-### Step 2: Deploy your changes
+## Installation Steps
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Install MCP Server">
+    Choose your AI client and install the MCP server:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    <Tabs>
+      <Tab title="Claude Code">
+        Run this command in your terminal:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+        ```bash
+        claude mcp add robloxstudio -- npx -y robloxstudio-mcp
+        ```
 
-### Step 3: Go live
+        This automatically configures Claude Code to use the Roblox Studio MCP server.
+      </Tab>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+      <Tab title="Claude Desktop">
+        Add this configuration to your Claude Desktop config file:
 
-## Next steps
+        **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+        **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
-Now that you have your docs running, explore these key features:
+        ```json
+        {
+          "mcpServers": {
+            "robloxstudio-mcp": {
+              "command": "npx",
+              "args": ["-y", "robloxstudio-mcp"],
+              "description": "Advanced Roblox Studio integration for AI assistants"
+            }
+          }
+        }
+        ```
+
+        Then restart Claude Desktop.
+      </Tab>
+
+      <Tab title="Other MCP Clients">
+        For other MCP-compatible clients, add to your MCP configuration:
+
+        ```json
+        {
+          "mcpServers": {
+            "robloxstudio-mcp": {
+              "command": "npx",
+              "args": ["-y", "robloxstudio-mcp"]
+            }
+          }
+        }
+        ```
+      </Tab>
+    </Tabs>
+
+    <Note>
+      **Windows Users**: If you encounter issues with npx, use this configuration instead:
+
+      ```json
+      {
+        "mcpServers": {
+          "robloxstudio-mcp": {
+            "command": "cmd",
+            "args": ["/c", "npx", "-y", "robloxstudio-mcp@latest"]
+          }
+        }
+      }
+      ```
+    </Note>
+  </Step>
+
+  <Step title="Install Studio Plugin">
+    The MCP server requires a companion plugin in Roblox Studio:
+
+    <Tabs>
+      <Tab title="Creator Store (Easiest)">
+        1. Visit the [Creator Store page](https://create.roblox.com/store/asset/132985143757536)
+        2. Click **"Install"** button
+        3. Plugin opens automatically in Studio — no restart needed!
+      </Tab>
+
+      <Tab title="Direct Download">
+        1. Download [MCPPlugin.rbxmx](https://github.com/boshyxd/robloxstudio-mcp/releases/latest/download/MCPPlugin.rbxmx)
+        2. Save to your plugins folder:
+           - **Windows**: `%LOCALAPPDATA%/Roblox/Plugins/`
+           - **macOS**: `~/Documents/Roblox/Plugins/`
+        3. Restart Roblox Studio
+      </Tab>
+
+      <Tab title="Save as Local Plugin">
+        1. Copy the [plugin.luau code](https://github.com/boshyxd/robloxstudio-mcp/blob/main/studio-plugin/plugin.luau)
+        2. In Studio, create a new Script in ServerScriptService
+        3. Paste the plugin code
+        4. Right-click → **"Save as Local Plugin..."**
+        5. Name it "Roblox Studio MCP"
+        6. Plugin appears immediately in toolbar!
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Enable HTTP Requests">
+    The plugin needs HTTP access to communicate with the MCP server:
+
+    1. In Roblox Studio, open **Game Settings** (Home tab → Game Settings)
+    2. Navigate to **Security** section
+    3. Enable **"Allow HTTP Requests"**
+    4. Click **OK** to save
+
+    <Warning>
+      Without this setting, the plugin cannot connect to the MCP server. The plugin will show "HTTP 403 Forbidden" errors in the Output window.
+    </Warning>
+  </Step>
+
+  <Step title="Activate Plugin">
+    1. Look for the **"MCP Server"** button in your Plugins toolbar
+    2. Click it to activate the plugin
+    3. A dock widget appears showing connection status
+    4. Status should show:
+       - 🔴 **"Disconnected"** (normal until your AI makes a request)
+       - 🟢 **"Connected"** (when AI assistant is active)
+  </Step>
+
+  <Step title="Verify Connection">
+    Test the connection by asking your AI assistant:
+
+    ```
+    Show me the structure of game.Workspace
+    ```
+
+    Your AI should:
+    1. Call the `get_project_structure` or `get_file_tree` tool
+    2. Plugin status changes to 🟢 **"Connected"**
+    3. AI returns a formatted list of Workspace contents
+
+    <Note>
+      If you see connection errors, check:
+      - Plugin is activated (button clicked)
+      - HTTP requests are enabled in Game Settings
+      - Your AI client successfully started the MCP server
+      - Windows Firewall isn't blocking localhost:3002
+    </Note>
+  </Step>
+</Steps>
+
+## Your First AI Commands
+
+Now that everything is connected, try these commands with your AI assistant:
+
+### Explore Your Game
+
+```
+What services are available in my game?
+```
+
+The AI uses `get_services` to show all Roblox services and child counts.
+
+### View Game Structure
+
+```
+Show me the complete structure of game.ServerScriptService with depth 5
+```
+
+The AI uses `get_project_structure` with `maxDepth=5` for comprehensive exploration.
+
+### Find Instances
+
+```
+Find all Part objects in Workspace
+```
+
+The AI uses `search_objects` or `search_by_property` to locate instances.
+
+### Read a Script
+
+```
+Show me the code in game.ServerScriptService.MainScript
+```
+
+The AI uses `get_script_source` to retrieve and display the script.
+
+### Edit Properties
+
+```
+Set all parts in Workspace to Transparency 0.5
+```
+
+The AI:
+1. Finds all parts with `search_by_property`
+2. Uses `mass_set_property` to update them all at once
+
+### Smart Duplication
+
+```
+Duplicate game.Workspace.Platform 10 times, spacing them 5 studs apart on the X axis
+```
+
+The AI uses `smart_duplicate` with position offset.
+
+## Understanding Tool Results
+
+When your AI uses MCP tools, you'll see:
+
+- **Plugin Activity Panel** — Real-time log of tool executions
+- **AI Responses** — Formatted, human-readable results
+- **Studio Output** — Debug logging from the plugin (optional)
+
+<Tip>
+  The plugin's activity panel has a **Copy** button to export logs for debugging or sharing with the community.
+</Tip>
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed installation with troubleshooting
+  </Card>
+  <Card title="Tool Reference" icon="wrench" href="/api/overview">
+    Complete guide to all 53+ tools
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Plugin shows 'Disconnected' always">
+    This is normal when your AI client isn't actively making requests. The plugin only connects when the MCP server has work to do.
+
+    To test:
+    1. Ask your AI: "Show me game.Workspace structure"
+    2. Plugin should connect and show 🟢 status
+    3. After the request completes, it returns to disconnected state
+  </Accordion>
+
+  <Accordion title="AI says it can't find the tools">
+    The MCP server isn't running. Check:
+    - Your AI client configuration file has the correct MCP server entry
+    - You've restarted your AI client after adding the configuration
+    - For Claude Code: `claude mcp list` should show "robloxstudio-mcp"
+  </Accordion>
+
+  <Accordion title="'HTTP 403 Forbidden' in Output window">
+    HTTP requests are disabled. Go to:
+    1. **Game Settings** → **Security**
+    2. Enable **"Allow HTTP Requests"**
+    3. Restart Studio if the error persists
+  </Accordion>
+
+  <Accordion title="Plugin missing from toolbar">
+    1. Check the plugin file is in the correct folder:
+       - Windows: `%LOCALAPPDATA%/Roblox/Plugins/`
+       - macOS: `~/Documents/Roblox/Plugins/`
+    2. Restart Roblox Studio completely
+    3. Check Studio Output window for plugin errors
+  </Accordion>
+</AccordionGroup>
+
+## Tips for Best Results
+
+- **Use depth parameters**: `get_project_structure` defaults to depth 3. Use 5-10 for thorough exploration.
+- **Batch operations**: Ask AI to modify multiple objects at once using mass operations.
+- **Script line numbers**: When editing scripts, AI uses `numberedSource` from `get_script_source` to identify lines.
+- **Keep Studio open**: The plugin needs Studio running to execute API calls.
