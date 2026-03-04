@@ -1,0 +1,325 @@
+---
+title: redo
+description: Redo the last undone action in Roblox Studio using ChangeHistoryService
+---
+
+## Overview
+
+The `redo` tool reapplies the last action that was undone in Roblox Studio's change history. This is equivalent to pressing Ctrl+Y (or Ctrl+Shift+Z) in Studio and allows AI assistants to step forward through history after undoing.
+
+## Use Cases
+
+- Reapply changes after accidental undo
+- Step forward through change history
+- Implement undo/redo navigation for users
+- Restore changes after reviewing undo results
+- Navigate through experimental changes
+- Test different states by undoing and redoing
+- Provide full history navigation in tools
+
+## Parameters
+
+This tool takes no parameters.
+
+```json
+{}
+```
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the redo operation succeeded
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Description of the result (e.g., "Redo successful" or "Nothing to redo")
+</ResponseField>
+
+### Example Response (Success)
+
+```json
+{
+  "success": true,
+  "message": "Redo successful"
+}
+```
+
+### Example Response (Nothing to Redo)
+
+```json
+{
+  "success": false,
+  "message": "Nothing to redo"
+}
+```
+
+## Usage Examples
+
+### Basic Redo
+
+```javascript
+// Redo the last undone action
+const result = await mcpClient.callTool('redo', {});
+
+if (result.success) {
+  console.log('Action redone');
+} else {
+  console.log('Nothing to redo');
+}
+```
+
+### Undo-Then-Redo Pattern
+
+```javascript
+// Undo to preview original state, then redo
+await mcpClient.callTool('undo', {});
+
+console.log('Showing previous state...');
+await waitForUserReview();
+
+const keepNew = await askUser('Keep the new changes? (yes/no)');
+
+if (keepNew === 'yes') {
+  // Redo to restore the changes
+  await mcpClient.callTool('redo', {});
+  console.log('Changes restored');
+}
+```
+
+### History Navigation
+
+```javascript
+// Navigate through history like a time machine
+console.log('Step 1: Go back 3 actions');
+for (let i = 0; i < 3; i++) {
+  await mcpClient.callTool('undo', {});
+}
+
+console.log('Reviewing older state...');
+await waitForUserReview();
+
+console.log('Step 2: Go forward 2 actions');
+for (let i = 0; i < 2; i++) {
+  await mcpClient.callTool('redo', {});
+}
+
+console.log('Now at desired state');
+```
+
+### Accidental Undo Recovery
+
+```javascript
+// Whoops, undid too much, redo to restore
+for (let i = 0; i < 5; i++) {
+  await mcpClient.callTool('undo', {});
+}
+
+// Oops, went too far!
+console.log('Undid too much, restoring...');
+
+for (let i = 0; i < 2; i++) {
+  await mcpClient.callTool('redo', {});
+}
+
+console.log('Restored 2 actions');
+```
+
+### Interactive History Browser
+
+```javascript
+// Allow user to navigate history interactively
+let command = '';
+
+while (command !== 'quit') {
+  command = await askUser('Command (undo/redo/quit):');
+  
+  if (command === 'undo') {
+    const result = await mcpClient.callTool('undo', {});
+    console.log(result.message);
+  } else if (command === 'redo') {
+    const result = await mcpClient.callTool('redo', {});
+    console.log(result.message);
+  }
+}
+```
+
+### State Comparison
+
+```javascript
+// Compare before and after states
+const beforeState = await captureState();
+
+// Make changes
+await mcpClient.callTool('mass_set_property', {
+  paths: platformPaths,
+  propertyName: 'Transparency',
+  propertyValue: 0.5
+});
+
+const afterState = await captureState();
+
+// Show comparison
+showComparison(beforeState, afterState);
+
+// Let user choose
+const keepAfter = await askUser('Use new state? (yes/no)');
+
+if (keepAfter === 'no') {
+  await mcpClient.callTool('undo', {});
+  console.log('Reverted to before state');
+}
+
+// User changes mind
+const changeBack = await askUser('Actually, redo? (yes/no)');
+
+if (changeBack === 'yes') {
+  await mcpClient.callTool('redo', {});
+  console.log('Restored after state');
+}
+```
+
+### Multiple Redo
+
+```javascript
+// Redo multiple actions
+const redoCount = 5;
+let redone = 0;
+
+for (let i = 0; i < redoCount; i++) {
+  const result = await mcpClient.callTool('redo', {});
+  
+  if (result.success) {
+    redone++;
+  } else {
+    console.log('No more actions to redo');
+    break;
+  }
+}
+
+console.log(`Redone ${redone} actions`);
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Redo only works if you've previously undone actions. The redo stack is cleared when you perform a new action after undo.
+</Tip>
+
+<Info>
+  Redo and undo share the same history stack. You can freely navigate backward (undo) and forward (redo) through recorded changes.
+</Info>
+
+<Warning>
+  Performing any new action after undo will clear the redo stack. You won't be able to redo after making new changes.
+</Warning>
+
+<Tip>
+  Use undo/redo for user-facing history navigation. Let users step through changes and preview different states.
+</Tip>
+
+## Behavior Details
+
+### Redo Stack
+
+- Redo stack is populated by undo operations
+- Each undo moves an action to the redo stack
+- Redo pops from the redo stack and reapplies the action
+- The redo stack is cleared when a new action is performed
+
+### What Can Be Redone
+
+- Any action that was previously undone
+- Property changes
+- Object creation/deletion
+- Reparenting operations
+- Script changes
+- All the same operations that can be undone
+
+### Redo Clearing
+
+- **Important:** Making any new change clears the redo stack
+- Once cleared, previously undone actions cannot be redone
+- Undo/redo navigation must be done without interruption by new changes
+
+## Common Patterns
+
+### Undo-Review-Redo
+
+```javascript
+// Temporarily undo to show previous state
+await mcpClient.callTool('undo', {});
+await showCurrentState();
+
+const goBack = await askUser('Keep this older state?');
+
+if (!goBack) {
+  await mcpClient.callTool('redo', {}); // Restore newer state
+}
+```
+
+### History Navigation
+
+```javascript
+// Navigate backward, then forward
+await navigateBack(3); // Undo 3 times
+await reviewState();
+await navigateForward(1); // Redo 1 time
+```
+
+### Redo Until Condition
+
+```javascript
+// Redo until reaching a specific state
+while (!await isAtDesiredState()) {
+  const result = await mcpClient.callTool('redo', {});
+  
+  if (!result.success) {
+    console.log('Reached end of redo stack');
+    break;
+  }
+}
+```
+
+### Safe Redo with Validation
+
+```javascript
+// Redo and validate the result
+const result = await mcpClient.callTool('redo', {});
+
+if (result.success) {
+  const isValid = await validateState();
+  
+  if (!isValid) {
+    console.log('Redone state is invalid, undoing again...');
+    await mcpClient.callTool('undo', {});
+  }
+}
+```
+
+## Common Issues
+
+**Issue: Nothing to redo**
+- No undo operations have been performed
+- Redo stack is empty
+- A new action was performed after undo, clearing the redo stack
+
+**Issue: Redo doesn't work after making changes**
+- **Expected behavior:** Performing a new action after undo clears the redo stack
+- This is standard undo/redo behavior in most applications
+- To preserve redo, don't make new changes after undo
+
+**Issue: Redo does something unexpected**
+- Redo reapplies the exact action that was undone
+- If multiple undos were performed, redo applies them in reverse order (LIFO)
+- Check which action was undone last
+
+**Issue: Can only redo once**
+- Each redo consumes one item from the redo stack
+- If you undo multiple times, you can redo multiple times
+- Once the redo stack is exhausted, "Nothing to redo"
+
+## Related Tools
+
+- [`undo`](/api/history/undo) - Undo the last action
+- [`batch_operations`](/api/advanced/batch-operations) - Group operations for atomic undo/redo
+- [`execute_lua`](/api/advanced/execute-lua) - Execute operations with custom undo/redo logic

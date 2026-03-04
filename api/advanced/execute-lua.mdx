@@ -1,0 +1,442 @@
+---
+title: execute_lua
+description: Execute arbitrary Luau code in Roblox Studio with full API access
+---
+
+## Overview
+
+The `execute_lua` tool allows you to run arbitrary Luau code directly in Roblox Studio's plugin context with full API access. This is the most powerful and flexible tool, enabling custom operations, complex calculations, and direct access to Roblox APIs that may not have dedicated MCP tools.
+
+## Use Cases
+
+- Execute custom Roblox API calls not covered by other tools
+- Perform complex calculations or logic in Lua
+- Access advanced Roblox services and APIs
+- Implement custom validation logic
+- Query internal Studio state
+- Run one-off scripts or experiments
+- Prototype new functionality before creating dedicated tools
+- Debug and inspect game state
+
+## Parameters
+
+<ParamField path="code" type="string" required>
+  Luau code to execute. Use "return value" to get results back.
+</ParamField>
+
+<ParamField path="args" type="object">
+  Optional arguments passed as a table to the code (accessible via ...)
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the code executed successfully
+</ResponseField>
+
+<ResponseField name="result" type="any">
+  The value returned by the code (if any)
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if execution failed
+</ResponseField>
+
+### Example Response (Success)
+
+```json
+{
+  "success": true,
+  "result": 42
+}
+```
+
+### Example Response (Error)
+
+```json
+{
+  "success": false,
+  "error": "attempt to index nil with 'Workspace'"
+}
+```
+
+## Usage Examples
+
+### Basic Execution
+
+```javascript
+// Execute simple Lua code
+const result = await mcpClient.callTool('execute_lua', {
+  code: 'return 2 + 2'
+});
+
+console.log('Result:', result.result); // 4
+```
+
+### Get Workspace Children Count
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local count = #game.Workspace:GetChildren()
+    return count
+  `
+});
+
+console.log(`Workspace has ${result.result} children`);
+```
+
+### Calculate Distance Between Parts
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local part1 = game.Workspace.Part1
+    local part2 = game.Workspace.Part2
+    local distance = (part1.Position - part2.Position).Magnitude
+    return distance
+  `
+});
+
+console.log(`Distance: ${result.result} studs`);
+```
+
+### Check if Instance Exists
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local instance = game.Workspace:FindFirstChild("MyPart")
+    return instance ~= nil
+  `
+});
+
+if (result.result) {
+  console.log('MyPart exists');
+} else {
+  console.log('MyPart not found');
+}
+```
+
+### Custom Validation
+
+```javascript
+// Validate script syntax
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local script = game.ServerScriptService.MyScript
+    local source = script.Source
+    local fn, err = loadstring(source)
+    if err then
+      return {valid = false, error = err}
+    else
+      return {valid = true}
+    end
+  `
+});
+
+if (result.result.valid) {
+  console.log('Script syntax is valid');
+} else {
+  console.log('Syntax error:', result.result.error);
+}
+```
+
+### Access Advanced APIs
+
+```javascript
+// Use TweenService to create animation
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local TweenService = game:GetService("TweenService")
+    local part = game.Workspace.Part
+    
+    local goal = {}
+    goal.Position = Vector3.new(0, 50, 0)
+    
+    local tweenInfo = TweenInfo.new(2)
+    local tween = TweenService:Create(part, tweenInfo, goal)
+    tween:Play()
+    
+    return "Tween started"
+  `
+});
+
+console.log(result.result);
+```
+
+### Complex Calculations
+
+```javascript
+// Calculate total mass of model
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local model = game.Workspace.ComplexModel
+    local totalMass = 0
+    
+    for _, part in ipairs(model:GetDescendants()) do
+      if part:IsA("BasePart") then
+        totalMass = totalMass + part.AssemblyMass
+      end
+    end
+    
+    return totalMass
+  `
+});
+
+console.log(`Total mass: ${result.result} units`);
+```
+
+### Using Arguments
+
+```javascript
+// Pass arguments to Lua code
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local args = ...
+    local partName = args.partName
+    local newColor = args.color
+    
+    local part = game.Workspace:FindFirstChild(partName)
+    if part then
+      part.BrickColor = BrickColor.new(newColor)
+      return "Color changed"
+    else
+      return "Part not found"
+    end
+  `,
+  args: {
+    partName: 'Platform_1',
+    color: 'Really red'
+  }
+});
+
+console.log(result.result);
+```
+
+### Query Studio Settings
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local StudioService = game:GetService("StudioService")
+    return {
+      gridSize = StudioService.GridSize,
+      rotateIncrement = StudioService.RotateIncrement
+    }
+  `
+});
+
+console.log('Grid size:', result.result.gridSize);
+console.log('Rotate increment:', result.result.rotateIncrement);
+```
+
+### Batch Property Get with Lua
+
+```javascript
+// Get multiple properties efficiently in one call
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local parts = {
+      game.Workspace.Part1,
+      game.Workspace.Part2,
+      game.Workspace.Part3
+    }
+    
+    local results = {}
+    for _, part in ipairs(parts) do
+      table.insert(results, {
+        name = part.Name,
+        position = {X = part.Position.X, Y = part.Position.Y, Z = part.Position.Z},
+        size = {X = part.Size.X, Y = part.Size.Y, Z = part.Size.Z}
+      })
+    end
+    
+    return results
+  `
+});
+
+console.log('Parts data:', result.result);
+```
+
+### Check Collision Groups
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local PhysicsService = game:GetService("PhysicsService")
+    local groups = PhysicsService:GetRegisteredCollisionGroups()
+    
+    local groupNames = {}
+    for _, group in ipairs(groups) do
+      table.insert(groupNames, group.name)
+    end
+    
+    return groupNames
+  `
+});
+
+console.log('Collision groups:', result.result);
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use execute_lua for operations that require multiple API calls or complex logic that would be inefficient as separate MCP tool calls.
+</Tip>
+
+<Info>
+  The code runs in the plugin context with full Studio API access. You have access to all game services and APIs.
+</Info>
+
+<Warning>
+  Syntax errors or runtime errors will return success = false with an error message. Always check result.success before using result.result.
+</Warning>
+
+<Tip>
+  Return structured data (tables) for complex results. Lua tables are automatically converted to JSON objects.
+</Tip>
+
+## Lua Context Details
+
+### Available Globals
+
+- `game` - DataModel root
+- All standard Lua globals (`math`, `string`, `table`, etc.)
+- All Roblox globals (`Vector3`, `CFrame`, `Color3`, etc.)
+- All game services (accessible via `game:GetService()`)
+
+### Return Values
+
+- Use `return <value>` to send data back
+- Numbers, strings, booleans, tables are supported
+- Roblox datatypes (Vector3, CFrame) are converted to tables
+- Functions and userdata cannot be returned
+
+### Accessing Arguments
+
+```lua
+local args = ...
+local myParam = args.paramName
+```
+
+### Multi-Line Code
+
+Use template literals in JavaScript:
+
+```javascript
+const code = `
+  local part = game.Workspace.Part
+  local size = part.Size
+  return size.X * size.Y * size.Z
+`;
+```
+
+## Security and Limitations
+
+### What You Can Do
+
+- Access and modify all game instances
+- Use all Roblox services and APIs
+- Perform calculations and logic
+- Query game state
+- Create/delete objects
+- Modify properties
+
+### What You Cannot Do
+
+- Execute malicious code (runs in sandboxed plugin context)
+- Access file system directly
+- Make HTTP requests (unless HttpService is enabled)
+- Access user's computer beyond Studio
+
+### Error Handling
+
+- Syntax errors are caught and returned in error field
+- Runtime errors are caught and returned in error field
+- Always check `success` field before using `result`
+
+## Common Patterns
+
+### Safe Execution
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', { code: luaCode });
+
+if (result.success) {
+  console.log('Result:', result.result);
+} else {
+  console.error('Lua error:', result.error);
+}
+```
+
+### Parameterized Execution
+
+```javascript
+const result = await mcpClient.callTool('execute_lua', {
+  code: `
+    local args = ...
+    -- Use args.param1, args.param2, etc.
+    return computeSomething(args)
+  `,
+  args: { param1: value1, param2: value2 }
+});
+```
+
+### Return Structured Data
+
+```javascript
+const code = `
+  return {
+    success = true,
+    data = {...},
+    message = "Operation complete"
+  }
+`;
+```
+
+### Error Handling in Lua
+
+```javascript
+const code = `
+  local success, result = pcall(function()
+    -- risky operation
+    return someFunction()
+  end)
+  
+  if success then
+    return {ok = true, value = result}
+  else
+    return {ok = false, error = result}
+  end
+`;
+```
+
+## Common Issues
+
+**Issue: Syntax error**
+- Check Lua syntax carefully (common: missing `end`, wrong quotes)
+- Use a Lua syntax checker before executing
+- Review error message for line number and details
+
+**Issue: Cannot access instance**
+- Instance may not exist (use FindFirstChild with nil checks)
+- Path may be incorrect
+- Instance may have been deleted
+
+**Issue: Return value is nil**
+- Make sure code includes `return <value>`
+- Check that the value exists before returning
+- Nil values are returned as `null` in JSON
+
+**Issue: Cannot return specific value**
+- Some Roblox datatypes can't be directly returned
+- Convert to tables: `{X = vector.X, Y = vector.Y, Z = vector.Z}`
+- Functions and userdata cannot be returned
+
+## Related Tools
+
+- [`batch_operations`](/api/advanced/batch-operations) - Execute multiple MCP operations efficiently
+- [`set_script_source`](/api/script-editing/set-script-source) - Edit script source code
+- [`get_instance_properties`](/api/instance-property/get-instance-properties) - Get properties without Lua
+- All other MCP tools - Use execute_lua when dedicated tools don't cover your use case

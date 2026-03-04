@@ -1,0 +1,361 @@
+---
+title: get_bounding_box
+description: Get the axis-aligned bounding box of a Model or BasePart
+---
+
+## Overview
+
+The `get_bounding_box` tool calculates the axis-aligned bounding box (AABB) for a Model or BasePart. This returns the center position and size of the smallest box that completely contains the object, which is useful for spatial calculations, collision detection, and positioning.
+
+## Use Cases
+
+- Calculate the size of complex models
+- Find the center point of grouped objects
+- Determine spacing for object placement
+- Implement collision detection and avoidance
+- Calculate gaps between platforms or objects
+- Position objects relative to model bounds
+- Generate terrain or effects around models
+- Validate object dimensions
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the Model or BasePart to analyze
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the operation succeeded
+</ResponseField>
+
+<ResponseField name="cframe" type="object">
+  The center position and orientation of the bounding box
+</ResponseField>
+
+<ResponseField name="cframe.Position" type="object">
+  Center position as Vector3 {X, Y, Z}
+</ResponseField>
+
+<ResponseField name="size" type="object">
+  Dimensions of the bounding box as Vector3 {X, Y, Z}
+</ResponseField>
+
+<ResponseField name="min" type="object">
+  Minimum corner position (bottom-left-back)
+</ResponseField>
+
+<ResponseField name="max" type="object">
+  Maximum corner position (top-right-front)
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "cframe": {
+    "Position": { "X": 10, "Y": 5, "Z": 0 }
+  },
+  "size": { "X": 20, "Y": 10, "Z": 4 },
+  "min": { "X": 0, "Y": 0, "Z": -2 },
+  "max": { "X": 20, "Y": 10, "Z": 2 }
+}
+```
+
+## Usage Examples
+
+### Get Model Bounds
+
+```javascript
+// Get the bounds of a complex model
+const bounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.ComplexModel'
+});
+
+console.log('Model center:', bounds.cframe.Position);
+console.log('Model size:', bounds.size);
+console.log('Width:', bounds.size.X);
+console.log('Height:', bounds.size.Y);
+console.log('Depth:', bounds.size.Z);
+```
+
+### Calculate Gap Between Objects
+
+```javascript
+// Calculate the gap between two platforms
+const platform1 = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Platform_1'
+});
+
+const platform2 = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Platform_2'
+});
+
+// Calculate Z-axis gap (assuming platforms are aligned on Z axis)
+const gap = platform2.min.Z - platform1.max.Z;
+
+console.log(`Gap between platforms: ${gap} studs`);
+```
+
+### Position Object Above Model
+
+```javascript
+// Place an object on top of a model
+const baseBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.BaseModel'
+});
+
+const objectBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.ObjectToPlace'
+});
+
+// Calculate Y position to place object on top
+const newY = baseBounds.max.Y + (objectBounds.size.Y / 2);
+
+await mcpClient.callTool('set_property', {
+  instancePath: 'game.Workspace.ObjectToPlace',
+  propertyName: 'Position',
+  propertyValue: {
+    X: baseBounds.cframe.Position.X,
+    Y: newY,
+    Z: baseBounds.cframe.Position.Z
+  }
+});
+
+console.log('Object positioned on top of base');
+```
+
+### Validate Model Size
+
+```javascript
+// Check if a model fits within size constraints
+const bounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.CustomModel'
+});
+
+const maxSize = 50; // Maximum allowed size
+
+if (bounds.size.X > maxSize || bounds.size.Y > maxSize || bounds.size.Z > maxSize) {
+  console.log('WARNING: Model exceeds maximum size');
+  console.log('Current size:', bounds.size);
+  console.log('Maximum size:', maxSize);
+} else {
+  console.log('Model size is valid');
+}
+```
+
+### Calculate Spacing for Array
+
+```javascript
+// Calculate spacing to duplicate an object in a line
+const bounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Template'
+});
+
+const spacing = 2; // studs between objects
+const offset = bounds.size.X + spacing;
+
+// Duplicate with spacing
+for (let i = 1; i <= 5; i++) {
+  const clone = await mcpClient.callTool('clone_object', {
+    instancePath: 'game.Workspace.Template',
+    newName: `Template_${i}`
+  });
+  
+  // Position clone
+  await mcpClient.callTool('set_property', {
+    instancePath: clone.clonePath,
+    propertyName: 'Position',
+    propertyValue: {
+      X: bounds.cframe.Position.X + (offset * i),
+      Y: bounds.cframe.Position.Y,
+      Z: bounds.cframe.Position.Z
+    }
+  });
+}
+
+console.log('Array created with proper spacing');
+```
+
+### Find Largest Object
+
+```javascript
+// Find the largest model in workspace
+const models = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Model'
+});
+
+let largestModel = null;
+let largestVolume = 0;
+
+for (const model of models.descendants) {
+  const bounds = await mcpClient.callTool('get_bounding_box', {
+    instancePath: model.path
+  });
+  
+  const volume = bounds.size.X * bounds.size.Y * bounds.size.Z;
+  
+  if (volume > largestVolume) {
+    largestVolume = volume;
+    largestModel = model;
+  }
+}
+
+console.log('Largest model:', largestModel.name);
+console.log('Volume:', largestVolume);
+```
+
+### Create Enclosing Box
+
+```javascript
+// Create a box that encloses a model
+const bounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.ModelToEnclose'
+});
+
+// Create transparent enclosing box
+const box = await mcpClient.callTool('create_object_with_properties', {
+  className: 'Part',
+  parent: 'game.Workspace',
+  name: 'EnclosingBox',
+  properties: {
+    Size: bounds.size,
+    Position: bounds.cframe.Position,
+    Transparency: 0.7,
+    CanCollide: false,
+    Anchored: true
+  }
+});
+
+console.log('Enclosing box created');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Bounding boxes are axis-aligned, meaning they don't rotate with the object. The box always aligns with world axes (X, Y, Z).
+</Tip>
+
+<Info>
+  For Models, the bounding box encompasses all descendant BaseParts. Empty Models or Models with only non-physical children may return zero size.
+</Info>
+
+<Warning>
+  The bounding box size can be larger than the visual size of rotated objects, as it must contain the entire object in axis-aligned space.
+</Warning>
+
+<Tip>
+  Use `min` and `max` corners to precisely calculate gaps, overlaps, or containment between objects.
+</Tip>
+
+## Calculation Details
+
+### For BaseParts
+
+- Bounding box is calculated from the part's Size and CFrame
+- Rotations are taken into account (box encloses rotated part)
+- Result is axis-aligned (doesn't rotate with the part)
+
+### For Models
+
+- Bounding box encompasses all descendant BaseParts
+- Non-physical descendants (Scripts, Folders) don't affect the box
+- If Model has no parts, size may be zero
+
+### Center Point
+
+- `cframe.Position` is the geometric center of the bounding box
+- This may not be the same as Model.PrimaryPart.Position
+- For symmetric objects, center aligns with object center
+- For asymmetric objects, center is the midpoint of the bounding box
+
+### Min/Max Corners
+
+- `min`: Smallest X, Y, Z coordinates (bottom-left-back corner)
+- `max`: Largest X, Y, Z coordinates (top-right-front corner)
+- These define the opposite corners of the bounding box
+
+## Common Patterns
+
+### Calculate Object Spacing
+
+```javascript
+const bounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: objectPath
+});
+
+const spacing = bounds.size.X + 5; // object width + 5 stud gap
+```
+
+### Check if Object is Within Bounds
+
+```javascript
+const containerBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Container'
+});
+
+const objectBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Object'
+});
+
+const isInside = 
+  objectBounds.min.X >= containerBounds.min.X &&
+  objectBounds.max.X <= containerBounds.max.X &&
+  objectBounds.min.Y >= containerBounds.min.Y &&
+  objectBounds.max.Y <= containerBounds.max.Y &&
+  objectBounds.min.Z >= containerBounds.min.Z &&
+  objectBounds.max.Z <= containerBounds.max.Z;
+
+console.log('Object is inside:', isInside);
+```
+
+### Calculate Distance Between Objects
+
+```javascript
+const obj1 = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Object1'
+});
+
+const obj2 = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Object2'
+});
+
+const dx = obj2.cframe.Position.X - obj1.cframe.Position.X;
+const dy = obj2.cframe.Position.Y - obj1.cframe.Position.Y;
+const dz = obj2.cframe.Position.Z - obj1.cframe.Position.Z;
+
+const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+console.log(`Distance: ${distance} studs`);
+```
+
+## Common Issues
+
+**Issue: Bounding box is larger than expected**
+- Rotated objects have larger axis-aligned boxes
+- Hidden or transparent parts still contribute to the box
+- Check for descendant parts that extend beyond visible geometry
+
+**Issue: Model has zero size**
+- Model contains no BaseParts (only scripts, folders, etc.)
+- All parts may be at the exact same position
+- Verify Model has physical descendants
+
+**Issue: Center doesn't match expected position**
+- Center is geometric center of bounding box, not PrimaryPart
+- For asymmetric models, center may not be intuitive
+- Use Model.PrimaryPart.Position if you need a specific reference point
+
+**Issue: Bounding box doesn't update after moving parts**
+- Call get_bounding_box again after modifications
+- Bounding box is calculated at call time, not cached
+
+## Related Tools
+
+- [`raycast`](/api/spatial/raycast) - Cast rays for precise collision detection
+- [`get_instance_properties`](/api/instance-property/get-instance-properties) - Get individual part Size and Position
+- [`set_property`](/api/property-modification/set-property) - Position objects using bounding box data
+- [`create_weld`](/api/spatial/create-weld) - Connect parts after positioning

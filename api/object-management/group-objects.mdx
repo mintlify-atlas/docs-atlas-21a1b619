@@ -1,0 +1,363 @@
+---
+title: group_objects
+description: Group multiple instances into a Model or Folder container
+---
+
+## Overview
+
+The `group_objects` tool creates a new container (Model or Folder) and moves multiple instances into it as children. This is useful for organizing related objects together in the hierarchy.
+
+## Use Cases
+
+- Organize related parts into a Model
+- Group level components for easy management
+- Create organizational folders for scripts, assets, or objects
+- Package multiple objects for duplication or storage
+- Build hierarchical structures for complex systems
+- Clean up cluttered workspace by grouping items
+- Create named collections of objects
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to group together
+</ParamField>
+
+<ParamField path="groupType" type="string">
+  Type of container to create: "Model" or "Folder" (default: "Model")
+</ParamField>
+
+<ParamField path="groupName" type="string">
+  Optional name for the group container. If not provided, a default name will be used.
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the grouping operation succeeded
+</ResponseField>
+
+<ResponseField name="groupPath" type="string">
+  Full path to the created group container
+</ResponseField>
+
+<ResponseField name="groupName" type="string">
+  Name of the group container
+</ResponseField>
+
+<ResponseField name="groupedCount" type="number">
+  Number of instances successfully moved into the group
+</ResponseField>
+
+<ResponseField name="parentPath" type="string">
+  Path to the parent where the group was created
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "groupPath": "game.Workspace.LevelComponents",
+  "groupName": "LevelComponents",
+  "groupedCount": 5,
+  "parentPath": "game.Workspace"
+}
+```
+
+## Usage Examples
+
+### Group Selected Objects
+
+```javascript
+// Group all selected objects into a Model
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length < 2) {
+  console.log('Please select at least 2 objects to group');
+} else {
+  const paths = selection.selection.map(obj => obj.path);
+  
+  const result = await mcpClient.callTool('group_objects', {
+    paths: paths,
+    groupType: 'Model',
+    groupName: 'GroupedObjects'
+  });
+  
+  console.log(`Created group: ${result.groupPath}`);
+  console.log(`Grouped ${result.groupedCount} objects`);
+}
+```
+
+### Organize Platforms Into Model
+
+```json
+{
+  "paths": [
+    "game.Workspace.Platform_1",
+    "game.Workspace.Platform_2",
+    "game.Workspace.Platform_3"
+  ],
+  "groupType": "Model",
+  "groupName": "Level_01_Platforms"
+}
+```
+
+### Group Scripts Into Folder
+
+```javascript
+// Organize all utility scripts into a Folder
+const scripts = await mcpClient.callTool('search_objects', {
+  query: 'Util',
+  searchType: 'name'
+});
+
+const scriptPaths = scripts.results
+  .filter(obj => obj.className === 'Script')
+  .map(obj => obj.path);
+
+if (scriptPaths.length > 0) {
+  await mcpClient.callTool('group_objects', {
+    paths: scriptPaths,
+    groupType: 'Folder',
+    groupName: 'UtilityScripts'
+  });
+  
+  console.log('Utility scripts organized');
+}
+```
+
+### Group Level Components
+
+```javascript
+// Group all components of a level (platforms, spawns, checkpoints)
+const levelObjects = await mcpClient.callTool('search_objects', {
+  query: 'Level_01',
+  searchType: 'name'
+});
+
+const paths = levelObjects.results.map(obj => obj.path);
+
+await mcpClient.callTool('group_objects', {
+  paths: paths,
+  groupType: 'Model',
+  groupName: 'Level_01'
+});
+
+console.log('Level 01 components grouped');
+```
+
+### Create Organizational Structure
+
+```javascript
+// Organize workspace by grouping objects by type
+const types = [
+  { filter: 'Platform', name: 'Platforms' },
+  { filter: 'Spawn', name: 'Spawns' },
+  { filter: 'Checkpoint', name: 'Checkpoints' }
+];
+
+for (const type of types) {
+  const objects = await mcpClient.callTool('search_objects', {
+    query: type.filter,
+    searchType: 'name'
+  });
+  
+  if (objects.results.length > 0) {
+    const paths = objects.results.map(obj => obj.path);
+    
+    await mcpClient.callTool('group_objects', {
+      paths: paths,
+      groupType: 'Folder',
+      groupName: type.name
+    });
+    
+    console.log(`Created ${type.name} folder with ${paths.length} objects`);
+  }
+}
+```
+
+### Group by Property Value
+
+```javascript
+// Group all red parts together
+const parts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+});
+
+const redParts = [];
+for (const part of parts.descendants) {
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: part.path
+  });
+  
+  if (props.BrickColor === 'Really red') {
+    redParts.push(part.path);
+  }
+}
+
+if (redParts.length > 0) {
+  await mcpClient.callTool('group_objects', {
+    paths: redParts,
+    groupType: 'Model',
+    groupName: 'RedParts'
+  });
+  
+  console.log(`Grouped ${redParts.length} red parts`);
+}
+```
+
+### Package Objects for Storage
+
+```javascript
+// Create a package of objects to move to ReplicatedStorage
+const templateParts = [
+  'game.Workspace.Base',
+  'game.Workspace.Walls',
+  'game.Workspace.Roof'
+];
+
+// Group them into a Model
+const result = await mcpClient.callTool('group_objects', {
+  paths: templateParts,
+  groupType: 'Model',
+  groupName: 'BuildingTemplate'
+});
+
+// Move the entire group to storage
+await mcpClient.callTool('reparent_object', {
+  instancePath: result.groupPath,
+  newParent: 'game.ReplicatedStorage.Templates'
+});
+
+console.log('Template packaged and stored');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use **Model** for physical objects that should be treated as a single unit (with a primary part, bounding box, etc.). Use **Folder** for organizational purposes only.
+</Tip>
+
+<Info>
+  The group container is created in the parent of the first object in the paths array. All objects are then moved into this container.
+</Info>
+
+<Warning>
+  If objects in the paths array have different parents, they'll all be moved to the same parent (where the group is created). This may change their absolute positions if they rely on parent CFrame.
+</Warning>
+
+<Tip>
+  After grouping Parts into a Model, consider setting the Model's PrimaryPart property for easier manipulation.
+</Tip>
+
+## Model vs Folder
+
+### When to Use Model
+
+- Grouping physical parts (BaseParts, MeshParts)
+- Creating assemblies that should move together
+- Objects that need a bounding box
+- Physical game objects (characters, buildings, vehicles)
+- Objects that may need a PrimaryPart reference
+
+### When to Use Folder
+
+- Organizing scripts
+- Grouping configuration objects
+- Creating hierarchical structure for organization
+- Non-physical organizational containers
+- Grouping sound effects, UI templates, or data
+
+## Behavior Details
+
+### Parent Selection
+
+- The group is created in the parent of the first object in the `paths` array
+- All objects are moved into the newly created group
+- If objects have different parents, they all end up in the same group (same parent)
+
+### Naming
+
+- If `groupName` is not provided, a default name is generated ("Model" or "Folder")
+- If an object with the same name exists, Roblox may append a number (e.g., "Model1", "Model2")
+
+### Hierarchy Changes
+
+- All grouped objects become direct children of the group container
+- Parent-child relationships between grouped objects are preserved
+- The group itself becomes a child of the common parent
+
+## Common Patterns
+
+### Organize Then Configure
+
+```javascript
+// Group objects, then configure the group
+const result = await mcpClient.callTool('group_objects', {
+  paths: platformPaths,
+  groupType: 'Model',
+  groupName: 'PlatformSet'
+});
+
+// Set properties on the Model
+await mcpClient.callTool('set_property', {
+  instancePath: result.groupPath,
+  propertyName: 'PrimaryPart',
+  propertyValue: 'game.Workspace.PlatformSet.Platform_1'
+});
+```
+
+### Cleanup Workflow
+
+```javascript
+// Group loose objects for cleanup
+const looseObjects = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  maxDepth: 1
+});
+
+const paths = looseObjects.descendants
+  .filter(obj => obj.className !== 'Folder' && obj.className !== 'Model')
+  .map(obj => obj.path);
+
+if (paths.length > 0) {
+  await mcpClient.callTool('group_objects', {
+    paths: paths,
+    groupType: 'Folder',
+    groupName: 'UncategorizedObjects'
+  });
+}
+```
+
+## Common Issues
+
+**Issue: Objects in group have unexpected positions**
+- Parts maintain their world position when moved
+- If objects were positioned relative to old parent, positions may look wrong
+- Models use world coordinates, not relative to Model's position
+- Consider using welds or adjusting positions after grouping
+
+**Issue: Model appears empty or invisible**
+- Check that parts are actually inside the Model (use get_instance_children)
+- Parts may be transparent or positioned far away
+- Use get_bounding_box to find where the Model's contents are located
+
+**Issue: Can't set PrimaryPart on Model**
+- PrimaryPart must be a BasePart descendant of the Model
+- Set PrimaryPart after grouping, not during
+- Ensure the target part is actually inside the Model
+
+**Issue: Group created in wrong location**
+- Group is created in the parent of the first path in the array
+- To control location, order paths appropriately
+- Or reparent the group after creation
+
+## Related Tools
+
+- [`ungroup_objects`](/api/object-management/ungroup-objects) - Dissolve a group and move children to its parent
+- [`mass_reparent`](/api/object-management/mass-reparent) - Move multiple objects without creating a container
+- [`create_object`](/api/object-creation/create-object) - Create empty Models or Folders
+- [`get_selection`](/api/studio-context/get-selection) - Get objects to group
+- [`get_bounding_box`](/api/spatial/get-bounding-box) - Get bounds of grouped Model

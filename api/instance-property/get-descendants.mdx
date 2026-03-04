@@ -1,0 +1,414 @@
+---
+title: get_descendants
+description: Get all descendants of an instance with optional filters for class, name, and depth
+---
+
+## Overview
+
+The `get_descendants` tool retrieves all descendant instances (children, grandchildren, etc.) of a specified instance, with powerful filtering options. This is essential for finding specific objects within complex hierarchies, analyzing structures, and gathering objects for batch operations.
+
+## Use Cases
+
+- Find all instances of a specific class (e.g., all Scripts, all Parts)
+- Locate objects by name pattern within a hierarchy
+- Get all parts in a Model for processing
+- Find deeply nested objects without manual navigation
+- Gather objects for batch operations (deletion, property changes)
+- Analyze game structure programmatically
+- Build object inventories or lists
+- Filter objects for specific operations
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the root instance whose descendants to retrieve
+</ParamField>
+
+<ParamField path="classFilter" type="string">
+  Optional: Only include instances of this class (e.g., "Part", "Script", "Model")
+</ParamField>
+
+<ParamField path="nameFilter" type="string">
+  Optional: Only include instances whose name contains this string
+</ParamField>
+
+<ParamField path="maxDepth" type="number">
+  Optional: Maximum depth to traverse (default: unlimited). Depth 1 = direct children only.
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="descendants" type="array">
+  Array of descendant instances matching the filters
+</ResponseField>
+
+<ResponseField name="descendants[].path" type="string">
+  Full path to the instance
+</ResponseField>
+
+<ResponseField name="descendants[].name" type="string">
+  Name of the instance
+</ResponseField>
+
+<ResponseField name="descendants[].className" type="string">
+  Roblox class type of the instance
+</ResponseField>
+
+<ResponseField name="descendants[].depth" type="number">
+  Depth level from root (direct children = 1, grandchildren = 2, etc.)
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Total number of descendants found
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "descendants": [
+    {
+      "path": "game.Workspace.Model.Part1",
+      "name": "Part1",
+      "className": "Part",
+      "depth": 1
+    },
+    {
+      "path": "game.Workspace.Model.Part2",
+      "name": "Part2",
+      "className": "Part",
+      "depth": 1
+    },
+    {
+      "path": "game.Workspace.Model.Folder.Part3",
+      "name": "Part3",
+      "className": "Part",
+      "depth": 2
+    }
+  ],
+  "count": 3
+}
+```
+
+## Usage Examples
+
+### Get All Descendants
+
+```javascript
+// Get all descendants of a Model
+const result = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.ComplexModel'
+});
+
+console.log(`Found ${result.count} descendants`);
+result.descendants.forEach(obj => {
+  console.log(`  ${obj.name} (${obj.className}) at depth ${obj.depth}`);
+});
+```
+
+### Filter by Class
+
+```javascript
+// Get all Parts in Workspace
+const parts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+});
+
+console.log(`Found ${parts.count} parts`);
+
+// Do something with all parts
+const paths = parts.descendants.map(p => p.path);
+await mcpClient.callTool('mass_set_property', {
+  paths: paths,
+  propertyName: 'Material',
+  propertyValue: 'Plastic'
+});
+```
+
+### Filter by Name
+
+```javascript
+// Find all objects with "Platform" in the name
+const platforms = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.Obby',
+  nameFilter: 'Platform'
+});
+
+console.log(`Found ${platforms.count} platforms`);
+```
+
+### Combined Filters
+
+```javascript
+// Find all Scripts with "Util" in the name
+const utilScripts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.ServerScriptService',
+  classFilter: 'Script',
+  nameFilter: 'Util'
+});
+
+console.log(`Found ${utilScripts.count} utility scripts`);
+```
+
+### Limit Depth
+
+```javascript
+// Get only direct children (depth 1)
+const directChildren = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.Level_01',
+  maxDepth: 1
+});
+
+console.log(`Found ${directChildren.count} direct children`);
+
+// Get children and grandchildren (depth 2)
+const nearDescendants = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.Level_01',
+  maxDepth: 2
+});
+
+console.log(`Found ${nearDescendants.count} descendants within 2 levels`);
+```
+
+### Get All Scripts
+
+```javascript
+// Find all scripts in the entire game
+const allScripts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game',
+  classFilter: 'Script'
+});
+
+const localScripts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game',
+  classFilter: 'LocalScript'
+});
+
+const moduleScripts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game',
+  classFilter: 'ModuleScript'
+});
+
+console.log(`Total scripts: ${allScripts.count + localScripts.count + moduleScripts.count}`);
+```
+
+### Process All Parts in Model
+
+```javascript
+// Make all parts in a model transparent
+const modelParts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.GhostModel',
+  classFilter: 'Part'
+});
+
+for (const part of modelParts.descendants) {
+  await mcpClient.callTool('set_property', {
+    instancePath: part.path,
+    propertyName: 'Transparency',
+    propertyValue: 0.7
+  });
+}
+
+console.log(`Made ${modelParts.count} parts transparent`);
+```
+
+### Find Deeply Nested Object
+
+```javascript
+// Find a specific object deep in the hierarchy
+const result = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  nameFilter: 'SpecialPart'
+});
+
+if (result.count > 0) {
+  const found = result.descendants[0];
+  console.log(`Found at: ${found.path}`);
+  console.log(`Depth: ${found.depth} levels deep`);
+} else {
+  console.log('Not found');
+}
+```
+
+### Build Object Inventory
+
+```javascript
+// Create an inventory of all objects by class
+const allObjects = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace'
+});
+
+const inventory = {};
+
+for (const obj of allObjects.descendants) {
+  if (!inventory[obj.className]) {
+    inventory[obj.className] = 0;
+  }
+  inventory[obj.className]++;
+}
+
+console.log('Workspace inventory:');
+for (const [className, count] of Object.entries(inventory)) {
+  console.log(`  ${className}: ${count}`);
+}
+```
+
+### Shallow vs Deep Search
+
+```javascript
+// Compare shallow vs deep search performance
+const shallow = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part',
+  maxDepth: 2
+});
+
+const deep = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+  // No maxDepth = unlimited
+});
+
+console.log(`Shallow (depth 2): ${shallow.count} parts`);
+console.log(`Deep (unlimited): ${deep.count} parts`);
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use `maxDepth` for better performance when you don't need to search the entire hierarchy. Shallow searches are much faster.
+</Tip>
+
+<Info>
+  `nameFilter` is case-sensitive and uses substring matching. "Platform" will match "Platform_01", "MyPlatform", and "platform_legacy".
+</Info>
+
+<Warning>
+  Searching very large hierarchies without filters can return thousands of objects. Always filter by class or name when possible.
+</Warning>
+
+<Tip>
+  For complex queries (e.g., "Parts that are red"), use get_descendants to gather candidates, then filter programmatically.
+</Tip>
+
+## Filter Behavior
+
+### classFilter
+
+- Exact class name match (case-sensitive)
+- Only direct class match (not subclasses)
+- Examples: "Part", "Script", "Model", "Folder", "MeshPart"
+
+### nameFilter
+
+- Substring match (case-sensitive)
+- Matches anywhere in the name
+- "Platform" matches: "Platform_1", "MyPlatform", "PlatformBase"
+- Empty string matches all names
+
+### maxDepth
+
+- `1` = Direct children only
+- `2` = Children and grandchildren
+- `undefined` or not provided = Unlimited depth
+- `0` = No descendants (returns empty)
+
+### Combining Filters
+
+All provided filters are applied as AND conditions:
+
+```javascript
+// This finds Scripts with "Manager" in the name, max 3 levels deep
+classFilter: 'Script',
+nameFilter: 'Manager',
+maxDepth: 3
+// Only Scripts that have "Manager" in the name AND are within 3 levels
+```
+
+## Common Patterns
+
+### Get Paths for Batch Operations
+
+```javascript
+const objects = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.Level_01',
+  classFilter: 'Part'
+});
+
+const paths = objects.descendants.map(obj => obj.path);
+
+// Use paths in batch operation
+await mcpClient.callTool('mass_set_property', {
+  paths: paths,
+  propertyName: 'Anchored',
+  propertyValue: true
+});
+```
+
+### Find and Process
+
+```javascript
+const targets = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  nameFilter: 'Target'
+});
+
+for (const target of targets.descendants) {
+  // Process each target
+  await processTarget(target.path);
+}
+```
+
+### Hierarchical Analysis
+
+```javascript
+const all = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.ComplexStructure'
+});
+
+// Group by depth
+const byDepth = {};
+for (const obj of all.descendants) {
+  if (!byDepth[obj.depth]) byDepth[obj.depth] = [];
+  byDepth[obj.depth].push(obj);
+}
+
+console.log('Hierarchy structure:');
+for (const [depth, objects] of Object.entries(byDepth)) {
+  console.log(`  Level ${depth}: ${objects.length} objects`);
+}
+```
+
+## Common Issues
+
+**Issue: Too many results returned**
+- Add classFilter to narrow results
+- Add nameFilter to match specific names
+- Use maxDepth to limit search depth
+- Search from a more specific starting point
+
+**Issue: Expected object not found**
+- Verify the object is actually a descendant (not sibling or parent)
+- Check nameFilter is spelled correctly (case-sensitive)
+- Check classFilter is the exact class name
+- Object may be deeper than maxDepth
+
+**Issue: Performance is slow**
+- Searching large hierarchies (like entire workspace) is expensive
+- Use maxDepth to limit search depth
+- Start from a more specific parent
+- Add filters to reduce results
+
+**Issue: nameFilter not working as expected**
+- nameFilter is substring match, not exact match
+- It's case-sensitive ("platform" ≠ "Platform")
+- Use exact string in the name to narrow results
+
+## Related Tools
+
+- [`get_instance_children`](/api/instance-property/get-instance-children) - Get only direct children (faster for shallow queries)
+- [`search_objects`](/api/studio-context/search-objects) - Search with different criteria
+- [`search_by_property`](/api/instance-property/search-by-property) - Find by property values
+- [`get_file_tree`](/api/file-system/get-file-tree) - Get hierarchy as tree structure
+- [`mass_set_property`](/api/property-modification/mass-set-property) - Process found descendants

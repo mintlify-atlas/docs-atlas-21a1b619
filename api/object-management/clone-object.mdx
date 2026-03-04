@@ -1,0 +1,302 @@
+---
+title: clone_object
+description: Clone a Roblox instance with all its children to a specified parent
+---
+
+## Overview
+
+The `clone_object` tool creates a complete copy of a Roblox instance, including all of its descendants (children, properties, attributes, and tags). This is equivalent to using the `:Clone()` method in Lua, providing a programmatic way to duplicate complex object hierarchies.
+
+## Use Cases
+
+- Duplicate complex Models with all their parts and scripts
+- Create templates by cloning pre-configured objects
+- Replicate entire hierarchies without manually recreating structure
+- Make backup copies before modifying objects
+- Clone objects to different parents for organizational purposes
+- Create multiple instances of the same prefab
+- Copy objects between different parts of the game
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the instance to clone using dot notation (e.g., "game.Workspace.Model", "game.ReplicatedStorage.Template")
+</ParamField>
+
+<ParamField path="newParent" type="string">
+  Optional: Path to the parent for the cloned instance. If not provided, the clone will be parented to the same parent as the original.
+</ParamField>
+
+<ParamField path="newName" type="string">
+  Optional: Name for the cloned instance. If not provided, the clone will have the same name as the original.
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the clone operation succeeded
+</ResponseField>
+
+<ResponseField name="clonePath" type="string">
+  Full path to the newly created clone
+</ResponseField>
+
+<ResponseField name="cloneName" type="string">
+  Name of the cloned instance
+</ResponseField>
+
+<ResponseField name="parent" type="string">
+  Path to the parent of the clone
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "clonePath": "game.Workspace.MyModel_Copy",
+  "cloneName": "MyModel_Copy",
+  "parent": "game.Workspace"
+}
+```
+
+## Usage Examples
+
+### Basic Clone (Same Parent)
+
+```json
+{
+  "instancePath": "game.Workspace.Template"
+}
+```
+
+Clones the Template to the same parent (Workspace) with the same name.
+
+### Clone with New Name
+
+```json
+{
+  "instancePath": "game.Workspace.Platform",
+  "newName": "Platform_Copy"
+}
+```
+
+Clones the Platform to Workspace with the name "Platform_Copy".
+
+### Clone to Different Parent
+
+```json
+{
+  "instancePath": "game.ReplicatedStorage.WeaponTemplate",
+  "newParent": "game.Workspace",
+  "newName": "SpawnedWeapon"
+}
+```
+
+Clones the weapon template from ReplicatedStorage into Workspace.
+
+### Clone Complex Model
+
+```javascript
+// Clone a complete level with all platforms and scripts
+const result = await mcpClient.callTool('clone_object', {
+  instancePath: 'game.Workspace.Level_01',
+  newParent: 'game.Workspace',
+  newName: 'Level_01_Backup'
+});
+
+console.log(`Created backup at ${result.clonePath}`);
+```
+
+### Clone Template Multiple Times
+
+```javascript
+// Create multiple instances from a template
+for (let i = 1; i <= 5; i++) {
+  await mcpClient.callTool('clone_object', {
+    instancePath: 'game.ReplicatedStorage.ButtonTemplate',
+    newParent: 'game.Workspace.UI',
+    newName: `Button_${i}`
+  });
+}
+
+console.log('Created 5 buttons from template');
+```
+
+### Clone and Modify
+
+```javascript
+// Clone an object and immediately modify properties
+const clone = await mcpClient.callTool('clone_object', {
+  instancePath: 'game.Workspace.Part',
+  newName: 'Part_Red'
+});
+
+// Make the clone red
+await mcpClient.callTool('set_property', {
+  instancePath: clone.clonePath,
+  propertyName: 'BrickColor',
+  propertyValue: 'Really red'
+});
+
+console.log('Cloned and modified part');
+```
+
+### Clone Between Services
+
+```javascript
+// Move a script from ServerStorage to ServerScriptService by cloning
+const result = await mcpClient.callTool('clone_object', {
+  instancePath: 'game.ServerStorage.BackupScript',
+  newParent: 'game.ServerScriptService',
+  newName: 'ActiveScript'
+});
+
+console.log(`Script cloned to ${result.clonePath}`);
+```
+
+### Batch Clone Operations
+
+```javascript
+// Clone multiple templates to different locations
+const templates = [
+  { source: 'game.ReplicatedStorage.Enemy1', dest: 'game.Workspace.Enemies' },
+  { source: 'game.ReplicatedStorage.Enemy2', dest: 'game.Workspace.Enemies' },
+  { source: 'game.ReplicatedStorage.Powerup', dest: 'game.Workspace.Items' }
+];
+
+for (const template of templates) {
+  await mcpClient.callTool('clone_object', {
+    instancePath: template.source,
+    newParent: template.dest
+  });
+}
+
+console.log('All templates cloned');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Cloning is much faster than manually recreating complex hierarchies. Use templates in ReplicatedStorage or ServerStorage for objects you need to clone frequently.
+</Tip>
+
+<Info>
+  All properties, attributes, tags, and children are cloned recursively. Scripts within the cloned hierarchy will maintain their source code.
+</Info>
+
+<Warning>
+  Cloning does not preserve references to external objects. If the original object has properties pointing to other instances (like ObjectValues), those references will be copied but may become invalid if the referenced objects don't exist in the new context.
+</Warning>
+
+<Tip>
+  For creating many copies with variations (like position offsets), consider using `smart_duplicate` instead, which provides automatic positioning and property variations.
+</Tip>
+
+## Behavior Details
+
+### What Gets Cloned
+
+- All descendant instances (recursive)
+- All properties (Position, Color, Size, etc.)
+- All attributes (custom data)
+- All CollectionService tags
+- Script source code (for Scripts, LocalScripts, ModuleScripts)
+- Archivable state (if the original has Archivable = false, it won't clone)
+
+### What Doesn't Get Cloned
+
+- Event connections (listeners are not copied)
+- Runtime state (like coroutines or temporary data)
+- References to external objects (may need to be re-established)
+- Welds/constraints (connections are copied but may need adjustment)
+
+### Parent Behavior
+
+- If `newParent` is not provided, clone is parented to the same parent as the original
+- If `newParent` is provided but invalid, the tool returns an error
+- Clone is immediately parented upon creation (not orphaned)
+
+## Common Patterns
+
+### Template Pattern
+
+```javascript
+// Store templates in ServerStorage, clone as needed
+const template = await mcpClient.callTool('clone_object', {
+  instancePath: 'game.ServerStorage.LevelTemplate',
+  newParent: 'game.Workspace',
+  newName: `Level_${levelNumber}`
+});
+
+// Configure the clone
+await mcpClient.callTool('set_property', {
+  instancePath: template.clonePath,
+  propertyName: 'Position',
+  propertyValue: { X: 0, Y: 100, Z: -200 }
+});
+```
+
+### Backup Before Modification
+
+```javascript
+// Create backup before risky changes
+const backup = await mcpClient.callTool('clone_object', {
+  instancePath: 'game.Workspace.ImportantModel',
+  newParent: 'game.ServerStorage.Backups',
+  newName: 'ImportantModel_Backup'
+});
+
+// Now safe to modify original
+await performRiskyModifications('game.Workspace.ImportantModel');
+```
+
+### Clone and Transform
+
+```javascript
+// Clone and immediately modify for variation
+const variants = ['Red', 'Blue', 'Green'];
+
+for (const color of variants) {
+  const clone = await mcpClient.callTool('clone_object', {
+    instancePath: 'game.Workspace.BasePart',
+    newName: `Part_${color}`
+  });
+  
+  await mcpClient.callTool('set_property', {
+    instancePath: clone.clonePath,
+    propertyName: 'BrickColor',
+    propertyValue: color
+  });
+}
+```
+
+## Common Issues
+
+**Issue: Clone appears but is in the wrong location**
+- Cloned parts inherit the Position property from the original
+- Use `set_property` to adjust Position after cloning
+- Or use `smart_duplicate` for automatic position offsets
+
+**Issue: References in clone don't work**
+- ObjectValues and similar reference properties copy the reference, not the object
+- Re-establish references after cloning if needed
+- Consider using paths relative to the clone's hierarchy
+
+**Issue: Clone is not appearing**
+- Check if original has `Archivable = false` (prevents cloning)
+- Verify the target parent exists and is valid
+- Ensure you have permission to create objects in the target parent
+
+**Issue: Scripts in clone don't run**
+- Scripts are cloned but may need to be enabled/disabled to restart
+- LocalScripts in Workspace may not run (need to be in PlayerGui, StarterPlayer, etc.)
+- Check script parent context requirements
+
+## Related Tools
+
+- [`reparent_object`](/api/object-management/reparent-object) - Move an existing object without cloning
+- [`smart_duplicate`](/api/object-creation/smart-duplicate) - Clone with automatic positioning and variations
+- [`mass_duplicate`](/api/object-creation/mass-duplicate) - Clone multiple objects at once
+- [`create_object_with_properties`](/api/object-creation/create-object-with-properties) - Create new objects from scratch
+- [`group_objects`](/api/object-management/group-objects) - Group objects into a container

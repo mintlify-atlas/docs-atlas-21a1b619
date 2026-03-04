@@ -1,0 +1,384 @@
+---
+title: ungroup_objects
+description: Dissolve a group (Model or Folder) and move all children to its parent
+---
+
+## Overview
+
+The `ungroup_objects` tool dissolves a Model or Folder container, moving all of its children to the container's parent and then deleting the container. This is useful for flattening hierarchies and removing unnecessary organizational layers.
+
+## Use Cases
+
+- Remove unnecessary organizational containers
+- Flatten deeply nested hierarchies
+- Extract objects from a group for individual manipulation
+- Clean up after importing models with excessive grouping
+- Simplify hierarchy structure
+- Merge grouped objects into parent level
+- Undo a previous group_objects operation
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the Model or Folder to ungroup
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the ungroup operation succeeded
+</ResponseField>
+
+<ResponseField name="childrenMoved" type="number">
+  Number of children moved to the parent
+</ResponseField>
+
+<ResponseField name="newParent" type="string">
+  Path to the parent where children were moved
+</ResponseField>
+
+<ResponseField name="movedObjects" type="array">
+  Array of objects that were moved
+</ResponseField>
+
+<ResponseField name="movedObjects[].name" type="string">
+  Name of the moved object
+</ResponseField>
+
+<ResponseField name="movedObjects[].newPath" type="string">
+  New path after ungrouping
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "childrenMoved": 3,
+  "newParent": "game.Workspace",
+  "movedObjects": [
+    {
+      "name": "Platform_1",
+      "newPath": "game.Workspace.Platform_1"
+    },
+    {
+      "name": "Platform_2",
+      "newPath": "game.Workspace.Platform_2"
+    },
+    {
+      "name": "Platform_3",
+      "newPath": "game.Workspace.Platform_3"
+    }
+  ]
+}
+```
+
+## Usage Examples
+
+### Basic Ungroup
+
+```json
+{
+  "instancePath": "game.Workspace.GroupedObjects"
+}
+```
+
+Dissolves the "GroupedObjects" Model/Folder, moving all children to Workspace.
+
+### Ungroup Model
+
+```javascript
+// Ungroup a model to access individual parts
+const result = await mcpClient.callTool('ungroup_objects', {
+  instancePath: 'game.Workspace.LevelModel'
+});
+
+console.log(`Ungrouped ${result.childrenMoved} objects from LevelModel`);
+console.log('Objects moved to:', result.newParent);
+```
+
+### Flatten Nested Folders
+
+```javascript
+// Remove all organizational folders in a hierarchy
+const folders = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.ComplexHierarchy',
+  classFilter: 'Folder'
+});
+
+console.log(`Found ${folders.descendants.length} folders to ungroup`);
+
+// Ungroup from deepest to shallowest to avoid path changes
+for (const folder of folders.descendants.reverse()) {
+  const result = await mcpClient.callTool('ungroup_objects', {
+    instancePath: folder.path
+  });
+  
+  console.log(`Ungrouped ${folder.name}: ${result.childrenMoved} children`);
+}
+
+console.log('Hierarchy flattened');
+```
+
+### Selective Ungrouping
+
+```javascript
+// Ungroup only specific Models
+const models = await mcpClient.callTool('search_objects', {
+  query: 'Temp',
+  searchType: 'name'
+});
+
+for (const model of models.results) {
+  if (model.className === 'Model') {
+    await mcpClient.callTool('ungroup_objects', {
+      instancePath: model.path
+    });
+    
+    console.log(`Ungrouped ${model.name}`);
+  }
+}
+```
+
+### Undo Grouping
+
+```javascript
+// Undo an accidental grouping
+const result = await mcpClient.callTool('ungroup_objects', {
+  instancePath: 'game.Workspace.AccidentalGroup'
+});
+
+if (result.success) {
+  console.log('Grouping undone successfully');
+  console.log(`${result.childrenMoved} objects restored to ${result.newParent}`);
+}
+```
+
+### Clean Up Imported Models
+
+```javascript
+// Flatten unnecessarily complex imported model structure
+const importedModel = 'game.Workspace.ImportedAsset';
+
+// Get all sub-models
+const subModels = await mcpClient.callTool('get_descendants', {
+  instancePath: importedModel,
+  classFilter: 'Model'
+});
+
+// Ungroup all sub-models
+for (const subModel of subModels.descendants) {
+  await mcpClient.callTool('ungroup_objects', {
+    instancePath: subModel.path
+  });
+}
+
+console.log('Imported model flattened');
+```
+
+### Extract Objects From Group
+
+```javascript
+// Extract specific objects from a group, then delete the group
+const group = 'game.Workspace.MixedGroup';
+
+// Ungroup to parent level
+const result = await mcpClient.callTool('ungroup_objects', {
+  instancePath: group
+});
+
+// Now objects are at parent level and can be manipulated individually
+for (const obj of result.movedObjects) {
+  console.log(`Now accessible at: ${obj.newPath}`);
+  
+  // Modify individual objects as needed
+  await mcpClient.callTool('set_property', {
+    instancePath: obj.newPath,
+    propertyName: 'Transparency',
+    propertyValue: 0.5
+  });
+}
+```
+
+### Batch Ungroup Selected Models
+
+```javascript
+// Ungroup all selected Models
+const selection = await mcpClient.callTool('get_selection', {});
+
+const models = selection.selection.filter(obj => 
+  obj.className === 'Model' || obj.className === 'Folder'
+);
+
+if (models.length === 0) {
+  console.log('No Models or Folders selected');
+} else {
+  for (const model of models) {
+    const result = await mcpClient.callTool('ungroup_objects', {
+      instancePath: model.path
+    });
+    
+    console.log(`Ungrouped ${model.name}: ${result.childrenMoved} children`);
+  }
+}
+```
+
+## Tips and Best Practices
+
+<Tip>
+  When ungrouping nested structures, work from deepest to shallowest levels to avoid path changes invalidating subsequent operations.
+</Tip>
+
+<Info>
+  Ungrouping permanently deletes the container. If you need to keep the container, use `mass_reparent` to move children out instead.
+</Info>
+
+<Warning>
+  Physical parts in a Model may rely on the Model's properties (like PrimaryPart). After ungrouping, these relationships are lost.
+</Warning>
+
+<Tip>
+  If parts were welded or constrained within the Model, those constraints remain but may need adjustment after ungrouping.
+</Tip>
+
+## Behavior Details
+
+### What Happens During Ungrouping
+
+1. All children of the group are moved to the group's parent
+2. The empty group container is deleted
+3. Children maintain all their properties, attributes, and tags
+4. Descendants of children (grandchildren, etc.) remain with their parents
+
+### Position Behavior
+
+- Parts maintain their world position when moved
+- Since parts use world coordinates, visual position doesn't change
+- However, hierarchy-based scripts may break if they rely on the old parent
+
+### Model-Specific Behavior
+
+- PrimaryPart reference is lost (only existed on the Model)
+- Model-level properties (like ModelStreamingMode) are lost
+- Welds and constraints between parts are preserved
+
+### Folder-Specific Behavior
+
+- Folders don't have special properties, so ungrouping is straightforward
+- Only organizational structure changes
+
+## Common Patterns
+
+### Flatten Entire Hierarchy
+
+```javascript
+// Remove all organizational layers
+let modelsExist = true;
+
+while (modelsExist) {
+  const models = await mcpClient.callTool('get_descendants', {
+    instancePath: 'game.Workspace.ComplexStructure',
+    classFilter: 'Model'
+  });
+  
+  if (models.descendants.length === 0) {
+    modelsExist = false;
+  } else {
+    // Ungroup deepest first
+    for (const model of models.descendants.reverse()) {
+      await mcpClient.callTool('ungroup_objects', {
+        instancePath: model.path
+      });
+    }
+  }
+}
+
+console.log('Hierarchy completely flattened');
+```
+
+### Conditional Ungrouping
+
+```javascript
+// Ungroup only if group has few children
+const children = await mcpClient.callTool('get_instance_children', {
+  instancePath: 'game.Workspace.SmallGroup'
+});
+
+if (children.children.length <= 3) {
+  await mcpClient.callTool('ungroup_objects', {
+    instancePath: 'game.Workspace.SmallGroup'
+  });
+  
+  console.log('Small group ungrouped');
+} else {
+  console.log('Group too large, keeping it');
+}
+```
+
+### Ungroup and Organize Differently
+
+```javascript
+// Ungroup, then re-group by different criteria
+const result = await mcpClient.callTool('ungroup_objects', {
+  instancePath: 'game.Workspace.OldOrganization'
+});
+
+// Get the moved objects and organize by class
+const parts = [];
+const scripts = [];
+
+for (const obj of result.movedObjects) {
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: obj.newPath
+  });
+  
+  if (props.ClassName === 'Part') {
+    parts.push(obj.newPath);
+  } else if (props.ClassName === 'Script') {
+    scripts.push(obj.newPath);
+  }
+}
+
+// Re-group by type
+await mcpClient.callTool('group_objects', {
+  paths: parts,
+  groupType: 'Folder',
+  groupName: 'Parts'
+});
+
+await mcpClient.callTool('group_objects', {
+  paths: scripts,
+  groupType: 'Folder',
+  groupName: 'Scripts'
+});
+```
+
+## Common Issues
+
+**Issue: Parts appear scattered after ungrouping**
+- Parts maintain world position, so they don't move visually
+- If it looks scattered, they were already scattered within the Model
+- Use get_bounding_box before ungrouping to understand object distribution
+
+**Issue: Scripts break after ungrouping**
+- Scripts using Parent or FindFirstAncestor may break
+- Scripts referencing the old group path need updating
+- Check script source for hard-coded paths
+
+**Issue: Can't ungroup certain containers**
+- Some system containers can't be ungrouped (like Terrain, Camera)
+- Only Models and Folders can be ungrouped
+- Verify the instance class before ungrouping
+
+**Issue: Ungrouping doesn't delete the container**
+- The container is only deleted if it's empty after moving children
+- If the container has properties or connections, it may remain
+- Manually delete with delete_object if needed
+
+## Related Tools
+
+- [`group_objects`](/api/object-management/group-objects) - Create a group container
+- [`mass_reparent`](/api/object-management/mass-reparent) - Move children without deleting parent
+- [`delete_object`](/api/object-creation/delete-object) - Delete the container after moving children
+- [`get_instance_children`](/api/instance-property/get-instance-children) - See what will be moved before ungrouping
+- [`get_descendants`](/api/instance-property/get-descendants) - Find groups to ungroup

@@ -84,7 +84,8 @@
               "api/studio-context/get-place-info",
               "api/studio-context/get-services",
               "api/studio-context/search-objects",
-              "api/studio-context/get-selection"
+              "api/studio-context/get-selection",
+              "api/studio-context/set-selection"
             ]
           },
           {
@@ -93,7 +94,8 @@
               "api/instance-property/get-instance-properties",
               "api/instance-property/get-instance-children",
               "api/instance-property/search-by-property",
-              "api/instance-property/get-class-info"
+              "api/instance-property/get-class-info",
+              "api/instance-property/get-descendants"
             ]
           },
           {
@@ -150,6 +152,45 @@
             "group": "Project Analysis Tools",
             "pages": [
               "api/project-analysis/get-project-structure"
+            ]
+          },
+          {
+            "group": "Object Management Tools",
+            "pages": [
+              "api/object-management/clone-object",
+              "api/object-management/reparent-object",
+              "api/object-management/mass-reparent",
+              "api/object-management/group-objects",
+              "api/object-management/ungroup-objects"
+            ]
+          },
+          {
+            "group": "Spatial & Physics Tools",
+            "pages": [
+              "api/spatial/get-bounding-box",
+              "api/spatial/raycast",
+              "api/spatial/create-weld"
+            ]
+          },
+          {
+            "group": "Terrain Tools",
+            "pages": [
+              "api/terrain/fill-terrain",
+              "api/terrain/clear-terrain"
+            ]
+          },
+          {
+            "group": "History Tools",
+            "pages": [
+              "api/history/undo",
+              "api/history/redo"
+            ]
+          },
+          {
+            "group": "Advanced Tools",
+            "pages": [
+              "api/advanced/execute-lua",
+              "api/advanced/batch-operations"
             ]
           }
         ]

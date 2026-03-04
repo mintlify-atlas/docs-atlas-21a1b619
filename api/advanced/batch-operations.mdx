@@ -1,0 +1,503 @@
+---
+title: batch_operations
+description: Execute multiple operations in a single round-trip for maximum efficiency
+---
+
+## Overview
+
+The `batch_operations` tool executes multiple MCP operations in a single request, dramatically reducing round-trip latency and improving performance for bulk operations. This is essential for efficient automation when you need to perform many operations at once.
+
+## Use Cases
+
+- Perform complex multi-step operations efficiently
+- Mix different operation types (create, modify, delete, reparent)
+- Minimize network round-trips for bulk changes
+- Implement atomic operation sets
+- Build complex objects with multiple steps
+- Optimize performance for large-scale modifications
+- Execute interdependent operations in sequence
+
+## Parameters
+
+<ParamField path="operations" type="array" required>
+  Array of operations to execute. Each operation has a `type` and `data` field.
+</ParamField>
+
+### Operation Types
+
+- **setProperty** - Set a property on an instance
+- **createObject** - Create a new instance
+- **deleteObject** - Delete an instance
+- **reparent** - Move an instance to a new parent
+- **clone** - Clone an instance
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether all operations succeeded
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of individual operation results
+</ResponseField>
+
+<ResponseField name="results[].success" type="boolean">
+  Whether this operation succeeded
+</ResponseField>
+
+<ResponseField name="results[].result" type="any">
+  Result data from this operation
+</ResponseField>
+
+<ResponseField name="results[].error" type="string">
+  Error message if operation failed
+</ResponseField>
+
+<ResponseField name="executedCount" type="number">
+  Number of operations successfully executed
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "executedCount": 3,
+  "results": [
+    { "success": true, "result": "game.Workspace.NewPart" },
+    { "success": true, "result": "Property set" },
+    { "success": true, "result": "Object deleted" }
+  ]
+}
+```
+
+## Usage Examples
+
+### Create and Configure Object
+
+```javascript
+// Create object and set multiple properties in one call
+const result = await mcpClient.callTool('batch_operations', {
+  operations: [
+    {
+      type: 'createObject',
+      data: {
+        className: 'Part',
+        parent: 'game.Workspace',
+        name: 'MyPart'
+      }
+    },
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: 'game.Workspace.MyPart',
+        propertyName: 'Size',
+        propertyValue: { X: 10, Y: 1, Z: 10 }
+      }
+    },
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: 'game.Workspace.MyPart',
+        propertyName: 'BrickColor',
+        propertyValue: 'Really red'
+      }
+    },
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: 'game.Workspace.MyPart',
+        propertyName: 'Position',
+        propertyValue: { X: 0, Y: 10, Z: 0 }
+      }
+    }
+  ]
+});
+
+console.log(`Executed ${result.executedCount} operations`);
+```
+
+### Clone and Modify Multiple Objects
+
+```javascript
+// Clone objects and modify them
+const operations = [];
+
+for (let i = 1; i <= 5; i++) {
+  // Clone
+  operations.push({
+    type: 'clone',
+    data: {
+      instancePath: 'game.Workspace.Template',
+      newName: `Clone_${i}`
+    }
+  });
+  
+  // Set position
+  operations.push({
+    type: 'setProperty',
+    data: {
+      instancePath: `game.Workspace.Clone_${i}`,
+      propertyName: 'Position',
+      propertyValue: { X: i * 10, Y: 5, Z: 0 }
+    }
+  });
+}
+
+const result = await mcpClient.callTool('batch_operations', {
+  operations: operations
+});
+
+console.log('Cloned and positioned 5 objects');
+```
+
+### Create Hierarchy
+
+```javascript
+// Create folder structure and populate it
+const result = await mcpClient.callTool('batch_operations', {
+  operations: [
+    // Create folders
+    {
+      type: 'createObject',
+      data: { className: 'Folder', parent: 'game.Workspace', name: 'Level_01' }
+    },
+    {
+      type: 'createObject',
+      data: { className: 'Folder', parent: 'game.Workspace.Level_01', name: 'Platforms' }
+    },
+    {
+      type: 'createObject',
+      data: { className: 'Folder', parent: 'game.Workspace.Level_01', name: 'Spawns' }
+    },
+    
+    // Create objects in folders
+    {
+      type: 'createObject',
+      data: { className: 'Part', parent: 'game.Workspace.Level_01.Platforms', name: 'Platform_1' }
+    },
+    {
+      type: 'createObject',
+      data: { className: 'Part', parent: 'game.Workspace.Level_01.Spawns', name: 'Spawn_1' }
+    }
+  ]
+});
+
+console.log('Hierarchy created');
+```
+
+### Reorganize Objects
+
+```javascript
+// Move and rename multiple objects
+const result = await mcpClient.callTool('batch_operations', {
+  operations: [
+    // Create new container
+    {
+      type: 'createObject',
+      data: { className: 'Folder', parent: 'game.Workspace', name: 'Organized' }
+    },
+    
+    // Move objects
+    {
+      type: 'reparent',
+      data: {
+        instancePath: 'game.Workspace.Part1',
+        newParent: 'game.Workspace.Organized'
+      }
+    },
+    {
+      type: 'reparent',
+      data: {
+        instancePath: 'game.Workspace.Part2',
+        newParent: 'game.Workspace.Organized'
+      }
+    },
+    
+    // Set properties on moved objects
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: 'game.Workspace.Organized.Part1',
+        propertyName: 'Transparency',
+        propertyValue: 0.5
+      }
+    }
+  ]
+});
+```
+
+### Delete and Replace
+
+```javascript
+// Delete old objects and create new ones
+const result = await mcpClient.callTool('batch_operations', {
+  operations: [
+    // Delete old
+    { type: 'deleteObject', data: { instancePath: 'game.Workspace.OldPart1' } },
+    { type: 'deleteObject', data: { instancePath: 'game.Workspace.OldPart2' } },
+    
+    // Create new
+    {
+      type: 'createObject',
+      data: { className: 'Part', parent: 'game.Workspace', name: 'NewPart1' }
+    },
+    {
+      type: 'createObject',
+      data: { className: 'Part', parent: 'game.Workspace', name: 'NewPart2' }
+    },
+    
+    // Configure new
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: 'game.Workspace.NewPart1',
+        propertyName: 'Anchored',
+        propertyValue: true
+      }
+    }
+  ]
+});
+
+console.log('Replaced old objects with new');
+```
+
+### Build Complex Assembly
+
+```javascript
+// Create a multi-part structure
+const operations = [
+  // Base
+  {
+    type: 'createObject',
+    data: { className: 'Part', parent: 'game.Workspace', name: 'Base' }
+  },
+  {
+    type: 'setProperty',
+    data: {
+      instancePath: 'game.Workspace.Base',
+      propertyName: 'Size',
+      propertyValue: { X: 20, Y: 1, Z: 20 }
+    }
+  },
+  {
+    type: 'setProperty',
+    data: {
+      instancePath: 'game.Workspace.Base',
+      propertyName: 'Position',
+      propertyValue: { X: 0, Y: 0, Z: 0 }
+    }
+  },
+  {
+    type: 'setProperty',
+    data: {
+      instancePath: 'game.Workspace.Base',
+      propertyName: 'Anchored',
+      propertyValue: true
+    }
+  }
+];
+
+// Add pillars
+for (let i = 0; i < 4; i++) {
+  const angle = (i / 4) * Math.PI * 2;
+  const x = Math.cos(angle) * 8;
+  const z = Math.sin(angle) * 8;
+  
+  operations.push(
+    {
+      type: 'createObject',
+      data: { className: 'Part', parent: 'game.Workspace', name: `Pillar_${i}` }
+    },
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: `game.Workspace.Pillar_${i}`,
+        propertyName: 'Size',
+        propertyValue: { X: 2, Y: 10, Z: 2 }
+      }
+    },
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: `game.Workspace.Pillar_${i}`,
+        propertyName: 'Position',
+        propertyValue: { X: x, Y: 5, Z: z }
+      }
+    },
+    {
+      type: 'setProperty',
+      data: {
+        instancePath: `game.Workspace.Pillar_${i}`,
+        propertyName: 'Anchored',
+        propertyValue: true
+      }
+    }
+  );
+}
+
+const result = await mcpClient.callTool('batch_operations', {
+  operations: operations
+});
+
+console.log(`Created structure with ${result.executedCount} operations`);
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use batch_operations for 5+ operations to significantly improve performance. Single operations don't benefit from batching.
+</Tip>
+
+<Info>
+  Operations are executed in order. Later operations can reference objects created by earlier operations.
+</Info>
+
+<Warning>
+  If an operation fails, subsequent operations may also fail if they depend on the failed operation's result.
+</Warning>
+
+<Tip>
+  Build the operations array programmatically for complex patterns. Use loops, maps, and filters to generate operations.
+</Tip>
+
+## Operation Formats
+
+### setProperty
+
+```javascript
+{
+  type: 'setProperty',
+  data: {
+    instancePath: 'game.Workspace.Part',
+    propertyName: 'Size',
+    propertyValue: { X: 10, Y: 1, Z: 10 }
+  }
+}
+```
+
+### createObject
+
+```javascript
+{
+  type: 'createObject',
+  data: {
+    className: 'Part',
+    parent: 'game.Workspace',
+    name: 'MyPart'
+  }
+}
+```
+
+### deleteObject
+
+```javascript
+{
+  type: 'deleteObject',
+  data: {
+    instancePath: 'game.Workspace.Part'
+  }
+}
+```
+
+### reparent
+
+```javascript
+{
+  type: 'reparent',
+  data: {
+    instancePath: 'game.Workspace.Part',
+    newParent: 'game.Workspace.Folder'
+  }
+}
+```
+
+### clone
+
+```javascript
+{
+  type: 'clone',
+  data: {
+    instancePath: 'game.Workspace.Template',
+    newParent: 'game.Workspace',
+    newName: 'Clone_1'
+  }
+}
+```
+
+## Performance Comparison
+
+### Without Batching (Slow)
+
+```javascript
+// 10 round-trips
+for (let i = 0; i < 10; i++) {
+  await mcpClient.callTool('set_property', {
+    instancePath: `game.Workspace.Part_${i}`,
+    propertyName: 'Transparency',
+    propertyValue: 0.5
+  });
+}
+```
+
+### With Batching (Fast)
+
+```javascript
+// 1 round-trip
+const operations = [];
+for (let i = 0; i < 10; i++) {
+  operations.push({
+    type: 'setProperty',
+    data: {
+      instancePath: `game.Workspace.Part_${i}`,
+      propertyName: 'Transparency',
+      propertyValue: 0.5
+    }
+  });
+}
+
+await mcpClient.callTool('batch_operations', { operations });
+```
+
+## Error Handling
+
+- If an operation fails, it's recorded in the results array
+- Subsequent operations continue executing
+- Check each result's `success` field
+- `executedCount` shows how many succeeded
+
+```javascript
+const result = await mcpClient.callTool('batch_operations', { operations });
+
+result.results.forEach((opResult, index) => {
+  if (!opResult.success) {
+    console.error(`Operation ${index} failed:`, opResult.error);
+  }
+});
+
+console.log(`${result.executedCount} / ${operations.length} succeeded`);
+```
+
+## Common Issues
+
+**Issue: Later operations fail**
+- Earlier operation may have failed, breaking dependency chain
+- Check that instances created in earlier ops actually exist
+- Verify paths are correct for sequentially created objects
+
+**Issue: All operations fail**
+- Check operation format (type and data fields)
+- Verify data matches expected format for each operation type
+- Review first failure error message for clues
+
+**Issue: Performance not improved**
+- Ensure you're batching enough operations (5+ recommended)
+- Network latency is main bottleneck - batching helps most over slow connections
+- Very fast local connections may not show dramatic improvement
+
+## Related Tools
+
+- [`execute_lua`](/api/advanced/execute-lua) - For complex logic better suited to Lua
+- All other MCP tools - Individual operations can be batched
+- [`mass_set_property`](/api/property-modification/mass-set-property) - Specialized batch property setting
+- [`mass_create_objects`](/api/object-creation/mass-create-objects) - Specialized batch creation

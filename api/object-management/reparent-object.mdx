@@ -1,0 +1,359 @@
+---
+title: reparent_object
+description: Move a Roblox instance to a new parent without cloning
+---
+
+## Overview
+
+The `reparent_object` tool changes the parent of an existing Roblox instance, effectively moving it from one location in the hierarchy to another. This is equivalent to setting the `Parent` property in Lua and is useful for reorganizing your game structure.
+
+## Use Cases
+
+- Reorganize game structure by moving objects between folders
+- Move objects between services (e.g., ServerStorage to Workspace)
+- Transfer ownership of objects to different containers
+- Clean up hierarchy by moving objects to appropriate locations
+- Implement dynamic parenting logic (e.g., equipping items)
+- Organize levels by moving platforms to level-specific folders
+- Move scripts between services for organization
+
+## Parameters
+
+<ParamField path="instancePath" type="string" required>
+  Path to the instance to move using dot notation (e.g., "game.Workspace.Part", "game.ServerScriptService.Script")
+</ParamField>
+
+<ParamField path="newParent" type="string" required>
+  Path to the new parent instance where the object should be moved (e.g., "game.Workspace.Folder", "game.ReplicatedStorage")
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the reparent operation succeeded
+</ResponseField>
+
+<ResponseField name="newPath" type="string">
+  The new full path of the moved instance
+</ResponseField>
+
+<ResponseField name="oldParent" type="string">
+  Path to the previous parent
+</ResponseField>
+
+<ResponseField name="newParent" type="string">
+  Path to the new parent
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "newPath": "game.Workspace.Levels.Level_01.Platform",
+  "oldParent": "game.Workspace",
+  "newParent": "game.Workspace.Levels.Level_01"
+}
+```
+
+## Usage Examples
+
+### Basic Reparenting
+
+```json
+{
+  "instancePath": "game.Workspace.Part",
+  "newParent": "game.Workspace.Folder"
+}
+```
+
+Moves the Part from Workspace directly into a Folder within Workspace.
+
+### Move Between Services
+
+```json
+{
+  "instancePath": "game.ServerStorage.TempScript",
+  "newParent": "game.ServerScriptService"
+}
+```
+
+Moves a script from ServerStorage to ServerScriptService where it can run.
+
+### Organize Into Folders
+
+```javascript
+// Move all platforms into a "Platforms" folder
+const platforms = await mcpClient.callTool('search_objects', {
+  query: 'Platform',
+  searchType: 'name'
+});
+
+// Create organizing folder
+await mcpClient.callTool('create_object', {
+  className: 'Folder',
+  parent: 'game.Workspace',
+  name: 'Platforms'
+});
+
+// Move all platforms into the folder
+for (const platform of platforms.results) {
+  await mcpClient.callTool('reparent_object', {
+    instancePath: platform.path,
+    newParent: 'game.Workspace.Platforms'
+  });
+}
+
+console.log(`Organized ${platforms.results.length} platforms`);
+```
+
+### Move to Level-Specific Container
+
+```javascript
+// Reorganize obby platforms by level
+for (let level = 1; level <= 20; level++) {
+  // Create level folder
+  await mcpClient.callTool('create_object', {
+    className: 'Folder',
+    parent: 'game.Workspace.Obby',
+    name: `Level_${level.toString().padStart(2, '0')}`
+  });
+  
+  // Find platforms for this level
+  const platforms = await mcpClient.callTool('search_objects', {
+    query: `Level_${level.toString().padStart(2, '0')}`,
+    searchType: 'name'
+  });
+  
+  // Move platforms to level folder
+  for (const platform of platforms.results) {
+    await mcpClient.callTool('reparent_object', {
+      instancePath: platform.path,
+      newParent: `game.Workspace.Obby.Level_${level.toString().padStart(2, '0')}`
+    });
+  }
+}
+```
+
+### Conditional Reparenting
+
+```javascript
+// Move red parts to one folder, blue parts to another
+const allParts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+});
+
+for (const part of allParts.descendants) {
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: part.path
+  });
+  
+  if (props.BrickColor === 'Really red') {
+    await mcpClient.callTool('reparent_object', {
+      instancePath: part.path,
+      newParent: 'game.Workspace.RedParts'
+    });
+  } else if (props.BrickColor === 'Really blue') {
+    await mcpClient.callTool('reparent_object', {
+      instancePath: part.path,
+      newParent: 'game.Workspace.BlueParts'
+    });
+  }
+}
+```
+
+### Move Selected Objects
+
+```javascript
+// Move all selected objects to a specific folder
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length === 0) {
+  console.log('Please select objects to move');
+} else {
+  for (const obj of selection.selection) {
+    await mcpClient.callTool('reparent_object', {
+      instancePath: obj.path,
+      newParent: 'game.Workspace.SelectedItems'
+    });
+  }
+  
+  console.log(`Moved ${selection.selection.length} objects`);
+}
+```
+
+### Implement Equip System
+
+```javascript
+// Simulate equipping a tool (move from inventory to character)
+const result = await mcpClient.callTool('reparent_object', {
+  instancePath: 'game.ReplicatedStorage.Tools.Sword',
+  newParent: 'game.Workspace.Player.Backpack'
+});
+
+console.log('Tool equipped');
+```
+
+### Batch Reorganization
+
+```javascript
+// Move all scripts from Workspace to ServerScriptService
+const scripts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Script'
+});
+
+console.log(`Found ${scripts.descendants.length} scripts in Workspace`);
+
+for (const script of scripts.descendants) {
+  await mcpClient.callTool('reparent_object', {
+    instancePath: script.path,
+    newParent: 'game.ServerScriptService'
+  });
+  console.log(`Moved ${script.name}`);
+}
+
+console.log('All scripts moved to ServerScriptService');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use reparenting for organizational cleanup. Moving objects between folders is cheap and doesn't create duplicates like cloning does.
+</Tip>
+
+<Info>
+  When you reparent an object, its descendants move with it. The entire hierarchy is preserved.
+</Info>
+
+<Warning>
+  Reparenting a script can affect whether it runs. Scripts in Workspace don't run, but scripts in ServerScriptService do. Be mindful of service-specific behaviors.
+</Warning>
+
+<Tip>
+  For moving multiple objects to the same parent, use `mass_reparent` for better performance.
+</Tip>
+
+## Behavior Details
+
+### What Happens During Reparenting
+
+- The instance is immediately moved to the new parent
+- All descendants move with the instance (entire hierarchy)
+- All properties, attributes, and tags are preserved
+- The instance's Name stays the same
+- Script execution may be affected if moving to/from script-enabled services
+
+### Path Changes
+
+- The full path changes to reflect the new parent
+- Any code referencing the old path will break
+- References from other objects (ObjectValues, etc.) are not automatically updated
+
+### Special Behaviors by Service
+
+**Moving to Workspace:**
+- Objects become visible and physical in the game world
+- Scripts (Server) don't run in Workspace
+- LocalScripts don't run in Workspace (need to be in PlayerGui, etc.)
+
+**Moving to ServerScriptService:**
+- Scripts will run on the server
+- Only Scripts (not LocalScripts) run here
+
+**Moving to ReplicatedStorage:**
+- Objects are accessible by both client and server
+- Scripts here don't run (storage location)
+
+**Moving to ServerStorage:**
+- Only accessible from server
+- Scripts here don't run (storage location)
+
+## Common Patterns
+
+### Organize by Category
+
+```javascript
+// Organize workspace objects by class type
+const classes = ['Part', 'Model', 'Script', 'Folder'];
+
+for (const className of classes) {
+  // Create folder for this class
+  await mcpClient.callTool('create_object', {
+    className: 'Folder',
+    parent: 'game.Workspace',
+    name: `${className}s`
+  });
+  
+  // Find all instances of this class
+  const instances = await mcpClient.callTool('get_descendants', {
+    instancePath: 'game.Workspace',
+    classFilter: className,
+    maxDepth: 1
+  });
+  
+  // Move them to the category folder
+  for (const instance of instances.descendants) {
+    await mcpClient.callTool('reparent_object', {
+      instancePath: instance.path,
+      newParent: `game.Workspace.${className}s`
+    });
+  }
+}
+```
+
+### Temporary Storage
+
+```javascript
+// Move object to storage, modify it, then move it back
+const original = 'game.Workspace.Part';
+
+// Move to storage
+await mcpClient.callTool('reparent_object', {
+  instancePath: original,
+  newParent: 'game.ServerStorage.Temp'
+});
+
+// Modify safely
+await mcpClient.callTool('set_property', {
+  instancePath: 'game.ServerStorage.Temp.Part',
+  propertyName: 'Size',
+  propertyValue: { X: 10, Y: 1, Z: 10 }
+});
+
+// Move back
+await mcpClient.callTool('reparent_object', {
+  instancePath: 'game.ServerStorage.Temp.Part',
+  newParent: 'game.Workspace'
+});
+```
+
+## Common Issues
+
+**Issue: Object disappears after reparenting**
+- Object may be hidden if moved to storage services (ServerStorage, ReplicatedStorage)
+- Check the new parent location - it's there, just not visible in Workspace
+
+**Issue: Script stops running after reparenting**
+- Scripts only run in specific locations (ServerScriptService, Workspace for some types)
+- Moving a script out of a running context stops execution
+- Check service-specific script execution rules
+
+**Issue: Path references break**
+- Old paths become invalid after reparenting
+- Update any code that references the old path
+- Use relative paths (Parent, FindFirstChild) when possible
+
+**Issue: Cannot reparent to target parent**
+- Target parent may not exist - verify with `get_instance_properties` first
+- Some instances cannot be children of certain parents (type restrictions)
+- Verify the target parent is not a descendant of the instance being moved (circular reference)
+
+## Related Tools
+
+- [`mass_reparent`](/api/object-management/mass-reparent) - Move multiple instances to a new parent at once
+- [`clone_object`](/api/object-management/clone-object) - Create a copy instead of moving
+- [`group_objects`](/api/object-management/group-objects) - Create a container and move objects into it
+- [`ungroup_objects`](/api/object-management/ungroup-objects) - Move children out of a container
+- [`get_descendants`](/api/instance-property/get-descendants) - Find objects to reparent

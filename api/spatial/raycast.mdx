@@ -1,0 +1,424 @@
+---
+title: raycast
+description: Cast a ray in workspace and return hit information for precise collision detection
+---
+
+## Overview
+
+The `raycast` tool performs raycasting in the Roblox workspace, sending a ray from an origin point in a direction and returning information about what it hits. This is essential for collision detection, distance measurement, line-of-sight checks, and spatial queries.
+
+## Use Cases
+
+- Detect if an object is blocking line of sight
+- Measure distance to the ground or nearest surface
+- Find what's in front of or below an object
+- Implement targeting systems
+- Validate platform placement (check for obstructions)
+- Calculate fall distance for jumps
+- Detect objects along a path
+- Check if a position is valid for spawning
+
+## Parameters
+
+<ParamField path="origin" type="object" required>
+  Starting point of the ray as Vector3 {X, Y, Z}
+</ParamField>
+
+<ParamField path="direction" type="object" required>
+  Direction and length of the ray as Vector3 {X, Y, Z}. The magnitude determines how far the ray travels.
+</ParamField>
+
+<ParamField path="filterPaths" type="array">
+  Optional: Array of instance paths to include or exclude from the raycast
+</ParamField>
+
+<ParamField path="filterType" type="string">
+  Filter behavior: "Include" (only hit filtered objects) or "Exclude" (ignore filtered objects). Default: "Exclude"
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="hit" type="boolean">
+  Whether the ray hit something
+</ResponseField>
+
+<ResponseField name="instance" type="string">
+  Path to the instance that was hit (if any)
+</ResponseField>
+
+<ResponseField name="position" type="object">
+  World position where the ray hit as Vector3 {X, Y, Z}
+</ResponseField>
+
+<ResponseField name="normal" type="object">
+  Surface normal at the hit point as Vector3 {X, Y, Z}
+</ResponseField>
+
+<ResponseField name="distance" type="number">
+  Distance from origin to hit point
+</ResponseField>
+
+<ResponseField name="material" type="string">
+  Material of the surface that was hit
+</ResponseField>
+
+### Example Response (Hit)
+
+```json
+{
+  "hit": true,
+  "instance": "game.Workspace.Platform_1",
+  "position": { "X": 10, "Y": 5, "Z": 0 },
+  "normal": { "X": 0, "Y": 1, "Z": 0 },
+  "distance": 15.5,
+  "material": "Plastic"
+}
+```
+
+### Example Response (No Hit)
+
+```json
+{
+  "hit": false
+}
+```
+
+## Usage Examples
+
+### Basic Downward Raycast
+
+```javascript
+// Check what's below a position
+const result = await mcpClient.callTool('raycast', {
+  origin: { X: 10, Y: 50, Z: 0 },
+  direction: { X: 0, Y: -100, Z: 0 } // 100 studs down
+});
+
+if (result.hit) {
+  console.log('Hit:', result.instance);
+  console.log('Ground at Y:', result.position.Y);
+  console.log('Distance to ground:', result.distance);
+} else {
+  console.log('No ground found within 100 studs');
+}
+```
+
+### Check Line of Sight
+
+```javascript
+// Check if there's a clear path between two points
+const start = { X: 0, Y: 10, Z: 0 };
+const end = { X: 100, Y: 10, Z: 0 };
+
+const direction = {
+  X: end.X - start.X,
+  Y: end.Y - start.Y,
+  Z: end.Z - start.Z
+};
+
+const result = await mcpClient.callTool('raycast', {
+  origin: start,
+  direction: direction
+});
+
+if (result.hit) {
+  console.log('Path blocked by:', result.instance);
+  console.log('Obstruction at:', result.position);
+} else {
+  console.log('Clear line of sight');
+}
+```
+
+### Measure Distance to Ground
+
+```javascript
+// Get exact distance from platform to ground
+const platformPos = await mcpClient.callTool('get_instance_properties', {
+  instancePath: 'game.Workspace.Platform'
+});
+
+const rayOrigin = {
+  X: platformPos.Position.X,
+  Y: platformPos.Position.Y - (platformPos.Size.Y / 2),
+  Z: platformPos.Position.Z
+};
+
+const result = await mcpClient.callTool('raycast', {
+  origin: rayOrigin,
+  direction: { X: 0, Y: -1000, Z: 0 },
+  filterPaths: ['game.Workspace.Platform'],
+  filterType: 'Exclude'
+});
+
+if (result.hit) {
+  console.log(`Distance to ground: ${result.distance} studs`);
+}
+```
+
+### Find Surface Normal
+
+```javascript
+// Get the angle of the ground below a point
+const result = await mcpClient.callTool('raycast', {
+  origin: { X: 10, Y: 50, Z: 0 },
+  direction: { X: 0, Y: -100, Z: 0 }
+});
+
+if (result.hit) {
+  console.log('Surface normal:', result.normal);
+  
+  // Check if surface is flat (normal points straight up)
+  if (result.normal.Y > 0.99) {
+    console.log('Surface is flat and walkable');
+  } else {
+    console.log('Surface is sloped');
+  }
+}
+```
+
+### Exclude Specific Objects
+
+```javascript
+// Raycast that ignores the character and only hits environment
+const result = await mcpClient.callTool('raycast', {
+  origin: { X: 0, Y: 10, Z: 0 },
+  direction: { X: 50, Y: 0, Z: 0 },
+  filterPaths: [
+    'game.Workspace.Character',
+    'game.Workspace.IgnoreMe'
+  ],
+  filterType: 'Exclude'
+});
+
+if (result.hit) {
+  console.log('Hit environment object:', result.instance);
+}
+```
+
+### Include Only Specific Objects
+
+```javascript
+// Only detect platforms, ignore everything else
+const platformPaths = [
+  'game.Workspace.Platform_1',
+  'game.Workspace.Platform_2',
+  'game.Workspace.Platform_3'
+];
+
+const result = await mcpClient.callTool('raycast', {
+  origin: { X: 10, Y: 50, Z: 0 },
+  direction: { X: 0, Y: -100, Z: 0 },
+  filterPaths: platformPaths,
+  filterType: 'Include'
+});
+
+if (result.hit) {
+  console.log('Hit platform:', result.instance);
+} else {
+  console.log('No platforms below this point');
+}
+```
+
+### Validate Jump Landing
+
+```javascript
+// Check if there's a landing platform for a jump
+const jumpStart = { X: 0, Y: 10, Z: 0 };
+const jumpArc = { X: 30, Y: 5, Z: 0 }; // 30 studs forward, 5 up
+
+const landingCheck = await mcpClient.callTool('raycast', {
+  origin: {
+    X: jumpStart.X + jumpArc.X,
+    Y: jumpStart.Y + jumpArc.Y,
+    Z: jumpStart.Z + jumpArc.Z
+  },
+  direction: { X: 0, Y: -50, Z: 0 }
+});
+
+if (landingCheck.hit) {
+  const fallDistance = landingCheck.distance;
+  console.log(`Landing platform found ${fallDistance} studs below`);
+  console.log('Landing on:', landingCheck.instance);
+} else {
+  console.log('WARNING: No landing platform!');
+}
+```
+
+### Calculate Gap Width
+
+```javascript
+// Measure gap between two platforms
+const platform1Bounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Platform_1'
+});
+
+// Cast ray from edge of platform 1
+const rayStart = {
+  X: platform1Bounds.max.X,
+  Y: platform1Bounds.cframe.Position.Y,
+  Z: platform1Bounds.cframe.Position.Z
+};
+
+const result = await mcpClient.callTool('raycast', {
+  origin: rayStart,
+  direction: { X: 100, Y: 0, Z: 0 }, // Cast along X axis
+  filterPaths: ['game.Workspace.Platform_1'],
+  filterType: 'Exclude'
+});
+
+if (result.hit) {
+  console.log(`Gap width: ${result.distance} studs`);
+  console.log('Next platform:', result.instance);
+}
+```
+
+## Tips and Best Practices
+
+<Tip>
+  The direction vector's magnitude determines ray length. A direction of `{"X": 100, "Y": 0, "Z": 0}` creates a 100-stud ray along the X axis.
+</Tip>
+
+<Info>
+  Raycasts ignore non-collidable parts (CanCollide = false) by default, unless specifically included in the filter.
+</Info>
+
+<Warning>
+  Very long raycasts (thousands of studs) may be slower. Use reasonable lengths based on your use case.
+</Warning>
+
+<Tip>
+  Use the normal vector to determine surface orientation. A normal of `{"X": 0, "Y": 1, "Z": 0}` means the surface points straight up.
+</Tip>
+
+## Direction Vector Details
+
+### Calculating Direction
+
+To cast a ray from point A to point B:
+
+```javascript
+const direction = {
+  X: B.X - A.X,
+  Y: B.Y - A.Y,
+  Z: B.Z - A.Z
+};
+```
+
+### Direction Magnitude
+
+The length of the direction vector determines ray length:
+
+```javascript
+const length = Math.sqrt(
+  direction.X * direction.X +
+  direction.Y * direction.Y +
+  direction.Z * direction.Z
+);
+```
+
+### Common Directions
+
+- **Down:** `{"X": 0, "Y": -100, "Z": 0}`
+- **Up:** `{"X": 0, "Y": 100, "Z": 0}`
+- **Forward (+Z):** `{"X": 0, "Y": 0, "Z": 100}`
+- **Right (+X):** `{"X": 100, "Y": 0, "Z": 0}`
+
+## Filter Behavior
+
+### Exclude Filter (Default)
+
+Ray hits everything EXCEPT objects in filterPaths:
+
+```javascript
+filterPaths: ['game.Workspace.Character'],
+filterType: 'Exclude'
+// Hits all objects except Character
+```
+
+### Include Filter
+
+Ray ONLY hits objects in filterPaths:
+
+```javascript
+filterPaths: ['game.Workspace.Platform_1', 'game.Workspace.Platform_2'],
+filterType: 'Include'
+// Only hits Platform_1 or Platform_2, ignores everything else
+```
+
+## Common Patterns
+
+### Ground Detection
+
+```javascript
+const result = await mcpClient.callTool('raycast', {
+  origin: { X: pos.X, Y: pos.Y + 5, Z: pos.Z },
+  direction: { X: 0, Y: -10, Z: 0 }
+});
+
+const isGrounded = result.hit && result.distance < 5;
+```
+
+### Obstacle Detection
+
+```javascript
+const result = await mcpClient.callTool('raycast', {
+  origin: currentPos,
+  direction: { X: forward.X * 20, Y: 0, Z: forward.Z * 20 }
+});
+
+if (result.hit && result.distance < 10) {
+  console.log('Obstacle ahead!');
+}
+```
+
+### Multi-Direction Scan
+
+```javascript
+const directions = [
+  { X: 1, Y: 0, Z: 0 },   // Right
+  { X: -1, Y: 0, Z: 0 },  // Left
+  { X: 0, Y: 0, Z: 1 },   // Forward
+  { X: 0, Y: 0, Z: -1 }   // Back
+];
+
+for (const dir of directions) {
+  const result = await mcpClient.callTool('raycast', {
+    origin: centerPos,
+    direction: { X: dir.X * 50, Y: dir.Y * 50, Z: dir.Z * 50 }
+  });
+  
+  if (result.hit) {
+    console.log(`Obstacle ${result.distance} studs in direction`, dir);
+  }
+}
+```
+
+## Common Issues
+
+**Issue: Raycast always returns hit = false**
+- Check that direction magnitude is large enough
+- Verify origin is in a valid location (not inside a part)
+- Ensure there are actually objects along the ray path
+- Check filter settings - Include filter may be too restrictive
+
+**Issue: Hitting the wrong object**
+- Ray may be hitting something between origin and target
+- Add unwanted objects to filterPaths with Exclude filter
+- Verify origin point is outside all objects
+
+**Issue: Distance seems wrong**
+- Distance is measured along the direction vector, not just one axis
+- For axis-aligned rays, distance matches coordinate difference
+- For diagonal rays, use Pythagorean theorem to understand distance
+
+**Issue: Normal vector is unexpected**
+- Normal points perpendicular to the surface at hit point
+- For rotated parts, normal reflects the rotation
+- Normal is always unit length (magnitude = 1)
+
+## Related Tools
+
+- [`get_bounding_box`](/api/spatial/get-bounding-box) - Get object bounds for raycast origin/target calculation
+- [`get_instance_properties`](/api/instance-property/get-instance-properties) - Get positions for raycast origins
+- [`create_weld`](/api/spatial/create-weld) - Connect detected objects
+- [`execute_lua`](/api/advanced/execute-lua) - Run complex raycasting logic in Lua

@@ -1,11 +1,11 @@
 ---
 title: 'API Reference Overview'
-description: 'Complete guide to the 53+ MCP tools for Roblox Studio'
+description: 'Complete guide to the 69 MCP tools for Roblox Studio'
 ---
 
 ## Introduction
 
-Roblox Studio MCP provides **53+ specialized tools** that enable AI assistants to interact with Roblox Studio through the Model Context Protocol (MCP). These tools provide programmatic access to instances, scripts, properties, and all Studio features.
+Roblox Studio MCP provides **69 specialized tools** that enable AI assistants to interact with Roblox Studio through the Model Context Protocol (MCP). These tools provide programmatic access to instances, scripts, properties, and all Studio features.
 
 ## How to Use Tools
 
@@ -55,7 +55,7 @@ Access Studio information and services:
 - **get_services** - Get available Roblox services and their children
 - **search_objects** - Find instances by name, class, or properties
 - **get_selection** - Get currently selected objects
-- **set_selection** - Set Studio selection to specific instances
+- **set_selection** - Set Studio selection to specific instances (NEW)
 
 ### Properties
 
@@ -63,6 +63,7 @@ Read and modify instance properties:
 
 - **get_instance_properties** - Get all properties of a specific instance
 - **get_instance_children** - Get child instances and their class types
+- **get_descendants** - Get all descendants with filters (NEW)
 - **set_property** - Set a property on any instance
 - **mass_set_property** - Set the same property on multiple instances
 - **mass_get_property** - Get the same property from multiple instances
@@ -79,16 +80,15 @@ Create and remove instances:
 - **mass_create_objects_with_properties** - Create multiple objects with properties
 - **delete_object** - Delete a Roblox instance
 
-### Object Management
+### Object Management (NEW)
 
 Manipulate existing instances:
 
-- **reparent_object** - Move an instance to a new parent
-- **clone_object** - Clone an instance with all children
-- **get_descendants** - Get all descendants with filters
-- **group_objects** - Group instances into a Model or Folder
-- **ungroup_objects** - Dissolve a group
-- **mass_reparent** - Move multiple instances at once
+- **clone_object** - Clone an instance with all children (NEW)
+- **reparent_object** - Move an instance to a new parent (NEW)
+- **mass_reparent** - Move multiple instances at once (NEW)
+- **group_objects** - Group instances into a Model or Folder (NEW)
+- **ungroup_objects** - Dissolve a group (NEW)
 
 ### Smart Duplication
 
@@ -132,39 +132,34 @@ Manage CollectionService tags:
 - **remove_tag** - Remove a tag from an instance
 - **get_tagged** - Get all instances with a specific tag
 
-### Physics & Spatial
+### Spatial & Physics (NEW)
 
 Physics and spatial operations:
 
-- **get_bounding_box** - Get axis-aligned bounding box
-- **create_weld** - Create a WeldConstraint between parts
-- **raycast** - Cast a ray and return hit information
+- **get_bounding_box** - Get axis-aligned bounding box of a Model or BasePart (NEW)
+- **raycast** - Cast a ray in workspace and return hit information (NEW)
+- **create_weld** - Create a WeldConstraint between two parts (NEW)
 
-### Terrain
+### Terrain (NEW)
 
 Terrain manipulation:
 
-- **fill_terrain** - Fill a region with terrain material
-- **clear_terrain** - Remove terrain in a region
+- **fill_terrain** - Fill a region with terrain material using Block, Ball, or Cylinder shape (NEW)
+- **clear_terrain** - Remove terrain in a specified region (NEW)
 
-### History
+### History (NEW)
 
 Undo/redo operations:
 
-- **undo** - Undo the last action
-- **redo** - Redo the last undone action
+- **undo** - Undo the last action in Studio (NEW)
+- **redo** - Redo the last undone action (NEW)
 
-### Batch Operations
+### Advanced Tools (NEW)
 
-Execute multiple operations efficiently:
+Execute complex operations:
 
-- **batch_operations** - Execute multiple operations in a single round-trip
-
-### Lua Execution
-
-Execute arbitrary Luau code:
-
-- **execute_lua** - Execute Luau code in Studio with full API access
+- **execute_lua** - Execute arbitrary Luau code in Studio with full API access (NEW)
+- **batch_operations** - Execute multiple operations in a single round-trip for maximum efficiency (NEW)
 
 ## Common Patterns and Conventions
 

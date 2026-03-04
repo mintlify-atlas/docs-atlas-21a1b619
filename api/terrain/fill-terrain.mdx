@@ -1,0 +1,388 @@
+---
+title: fill_terrain
+description: Fill a region of terrain with a specified material using Block, Ball, or Cylinder shape
+---
+
+## Overview
+
+The `fill_terrain` tool creates terrain in a specified region with a chosen material and shape. This is equivalent to using Studio's terrain tools programmatically, allowing you to generate landscapes, water bodies, and terrain features through code.
+
+## Use Cases
+
+- Generate terrain for maps and environments
+- Create water bodies, lava pits, or terrain features
+- Build terrain-based obstacles or platforms
+- Generate natural landscapes programmatically
+- Create terrain foundations for builds
+- Add environmental details like grass, sand, or rock
+- Sculpt terrain for obby courses or adventure maps
+
+## Parameters
+
+<ParamField path="shape" type="string" required>
+  Fill shape: "Block" (rectangular), "Ball" (spherical), or "Cylinder"
+</ParamField>
+
+<ParamField path="center" type="object" required>
+  Center point of the fill region as Vector3 {X, Y, Z}
+</ParamField>
+
+<ParamField path="size" type="object" required>
+  Size of the fill region as Vector3 {X, Y, Z}
+</ParamField>
+
+<ParamField path="material" type="string" required>
+  Terrain material name (e.g., "Grass", "Sand", "Water", "Rock", "Concrete", "Brick", "Granite", "Slate", "Wood", "WoodPlanks", "Basalt", "CrackedLava", "Glacier", "Ground", "Ice", "LeafyGrass", "Limestone", "Mud", "Pavement", "Salt", "Sandstone", "Snow")
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the terrain fill succeeded
+</ResponseField>
+
+<ResponseField name="shape" type="string">
+  Shape used for filling
+</ResponseField>
+
+<ResponseField name="center" type="object">
+  Center point of the filled region
+</ResponseField>
+
+<ResponseField name="size" type="object">
+  Size of the filled region
+</ResponseField>
+
+<ResponseField name="material" type="string">
+  Material that was filled
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "shape": "Block",
+  "center": { "X": 0, "Y": 0, "Z": 0 },
+  "size": { "X": 100, "Y": 10, "Z": 100 },
+  "material": "Grass"
+}
+```
+
+## Usage Examples
+
+### Create Grass Ground
+
+```json
+{
+  "shape": "Block",
+  "center": { "X": 0, "Y": 0, "Z": 0 },
+  "size": { "X": 200, "Y": 20, "Z": 200 },
+  "material": "Grass"
+}
+```
+
+Creates a 200x20x200 stud grass terrain block centered at origin.
+
+### Create Water Pool
+
+```javascript
+// Create a circular water pool
+const result = await mcpClient.callTool('fill_terrain', {
+  shape: 'Ball',
+  center: { X: 50, Y: 5, Z: 50 },
+  size: { X: 30, Y: 15, Z: 30 },
+  material: 'Water'
+});
+
+console.log('Water pool created');
+```
+
+### Create Lava Pit
+
+```javascript
+// Create a rectangular lava pit
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: { X: 0, Y: -10, Z: 0 },
+  size: { X: 50, Y: 20, Z: 50 },
+  material: 'CrackedLava'
+});
+
+console.log('Lava pit created');
+```
+
+### Build Terrain Base
+
+```javascript
+// Create a large terrain foundation for a map
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: { X: 0, Y: -5, Z: 0 },
+  size: { X: 500, Y: 10, Z: 500 },
+  material: 'Ground'
+});
+
+console.log('Terrain base created');
+```
+
+### Create Cylindrical Tower
+
+```javascript
+// Create a stone cylinder
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Cylinder',
+  center: { X: 100, Y: 25, Z: 100 },
+  size: { X: 20, Y: 50, Z: 20 },
+  material: 'Slate'
+});
+
+console.log('Stone tower created');
+```
+
+### Generate Terrain Islands
+
+```javascript
+// Create multiple spherical terrain islands
+const islands = [
+  { pos: { X: 0, Y: 50, Z: 0 }, radius: 40 },
+  { pos: { X: 100, Y: 60, Z: 100 }, radius: 35 },
+  { pos: { X: -80, Y: 45, Z: 80 }, radius: 30 }
+];
+
+for (const island of islands) {
+  await mcpClient.callTool('fill_terrain', {
+    shape: 'Ball',
+    center: island.pos,
+    size: { X: island.radius * 2, Y: island.radius * 2, Z: island.radius * 2 },
+    material: 'Grass'
+  });
+  
+  console.log(`Island created at ${island.pos.X}, ${island.pos.Z}`);
+}
+
+console.log('All islands generated');
+```
+
+### Create Layered Terrain
+
+```javascript
+// Create terrain with multiple layers (bedrock, stone, grass)
+const layers = [
+  { y: -15, height: 10, material: 'Basalt' },    // Bedrock
+  { y: -5, height: 10, material: 'Rock' },       // Stone layer
+  { y: 2, height: 4, material: 'Grass' }         // Top grass layer
+];
+
+for (const layer of layers) {
+  await mcpClient.callTool('fill_terrain', {
+    shape: 'Block',
+    center: { X: 0, Y: layer.y, Z: 0 },
+    size: { X: 300, Y: layer.height, Z: 300 },
+    material: layer.material
+  });
+  
+  console.log(`${layer.material} layer created`);
+}
+
+console.log('Layered terrain complete');
+```
+
+### Generate River
+
+```javascript
+// Create a winding river using multiple blocks
+const riverSegments = [
+  { x: 0, z: 0 },
+  { x: 20, z: 50 },
+  { x: 10, z: 100 },
+  { x: 30, z: 150 },
+  { x: 0, z: 200 }
+];
+
+for (const segment of riverSegments) {
+  await mcpClient.callTool('fill_terrain', {
+    shape: 'Cylinder',
+    center: { X: segment.x, Y: 0, Z: segment.z },
+    size: { X: 15, Y: 8, Z: 15 },
+    material: 'Water'
+  });
+}
+
+console.log('River generated');
+```
+
+### Create Beach Terrain
+
+```javascript
+// Create beach with sand and water
+// Water
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: { X: 0, Y: -3, Z: 0 },
+  size: { X: 200, Y: 6, Z: 100 },
+  material: 'Water'
+});
+
+// Sand beach
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: { X: 0, Y: 0, Z: 60 },
+  size: { X: 200, Y: 4, Z: 40 },
+  material: 'Sand'
+});
+
+// Grass beyond beach
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: { X: 0, Y: 1, Z: 100 },
+  size: { X: 200, Y: 8, Z: 60 },
+  material: 'Grass'
+});
+
+console.log('Beach terrain created');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use **Block** for rectangular regions like ground, walls, or platforms. Use **Ball** for natural features like hills or islands. Use **Cylinder** for towers, trees, or vertical features.
+</Tip>
+
+<Info>
+  Terrain material names are case-sensitive. Use exact names like "Grass", "Water", "CrackedLava", etc.
+</Info>
+
+<Warning>
+  Large terrain operations can be performance-intensive. Consider breaking very large terrain generation into smaller chunks.
+</Warning>
+
+<Tip>
+  Layering different materials creates more natural-looking terrain. Start with bedrock, add stone layers, then top with grass or sand.
+</Tip>
+
+## Available Materials
+
+### Natural Materials
+- **Grass** - Green grass terrain
+- **LeafyGrass** - Dense grass with leaves
+- **Ground** - Brown dirt/ground
+- **Mud** - Wet muddy terrain
+- **Sand** - Sandy terrain
+- **Sandstone** - Solid sandstone
+- **Rock** - Gray rock
+- **Slate** - Dark slate rock
+- **Basalt** - Dark volcanic rock
+- **Granite** - Speckled granite
+- **Limestone** - Light limestone
+
+### Water/Liquid
+- **Water** - Blue water (physical)
+- **CrackedLava** - Molten lava
+- **Glacier** - Ice/glacier
+- **Ice** - Frozen ice
+- **Salt** - White salt flats
+
+### Manufactured
+- **Concrete** - Gray concrete
+- **Brick** - Red brick
+- **Pavement** - Asphalt/pavement
+- **Wood** - Natural wood
+- **WoodPlanks** - Planked wood
+
+### Special
+- **Snow** - White snow terrain
+
+## Shape Behaviors
+
+### Block
+- Creates rectangular region
+- Size is the exact dimensions (X, Y, Z)
+- Aligned with world axes
+- Best for: foundations, walls, rectangular features
+
+### Ball
+- Creates spherical region
+- Size determines diameter in each axis
+- Can be ellipsoidal (different X, Y, Z sizes)
+- Best for: hills, islands, natural formations
+
+### Cylinder
+- Creates cylindrical region
+- Y determines height, X and Z determine diameter
+- Vertical cylinder (aligned with Y axis)
+- Best for: towers, trees, pillars
+
+## Common Patterns
+
+### Natural Terrain Generation
+
+```javascript
+// Generate varied terrain heights
+for (let x = -100; x <= 100; x += 40) {
+  for (let z = -100; z <= 100; z += 40) {
+    const height = Math.random() * 20 + 10; // 10-30 studs
+    
+    await mcpClient.callTool('fill_terrain', {
+      shape: 'Ball',
+      center: { X: x, Y: height / 2, Z: z },
+      size: { X: 40, Y: height, Z: 40 },
+      material: 'Grass'
+    });
+  }
+}
+```
+
+### Terrain Under Platform
+
+```javascript
+// Create terrain foundation under a platform
+const platformBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Platform'
+});
+
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: {
+    X: platformBounds.cframe.Position.X,
+    Y: platformBounds.min.Y - 5,
+    Z: platformBounds.cframe.Position.Z
+  },
+  size: {
+    X: platformBounds.size.X,
+    Y: 10,
+    Z: platformBounds.size.Z
+  },
+  material: 'Rock'
+});
+```
+
+## Common Issues
+
+**Issue: Terrain doesn't appear**
+- Check that center coordinates are in visible space
+- Verify material name is correct (case-sensitive)
+- Ensure size is reasonable (not zero or negative)
+- Camera may need to be repositioned to see the terrain
+
+**Issue: Terrain overlaps with parts**
+- Terrain can intersect with parts (this is normal)
+- Use clear_terrain first to remove existing terrain
+- Position parts above/below terrain as needed
+
+**Issue: Performance issues with large terrain**
+- Break large terrain into smaller operations
+- Use LOD (level of detail) strategies
+- Generate terrain in chunks as needed
+
+**Issue: Water doesn't look right**
+- Water terrain needs to be below the desired water surface level
+- Adjust Y position and height for correct water level
+- Combine with clear_terrain to sculpt water bodies
+
+## Related Tools
+
+- [`clear_terrain`](/api/terrain/clear-terrain) - Remove terrain in a region
+- [`get_bounding_box`](/api/spatial/get-bounding-box) - Get coordinates for terrain placement
+- [`raycast`](/api/spatial/raycast) - Detect terrain surfaces
+- [`execute_lua`](/api/advanced/execute-lua) - Complex terrain generation with Lua

@@ -1,0 +1,341 @@
+---
+title: mass_reparent
+description: Move multiple Roblox instances to a new parent at once for efficient reorganization
+---
+
+## Overview
+
+The `mass_reparent` tool moves multiple instances to a new parent in a single operation. This is significantly more efficient than calling `reparent_object` repeatedly, making it ideal for large-scale reorganization tasks.
+
+## Use Cases
+
+- Reorganize large numbers of objects efficiently
+- Move entire sets of platforms to level folders
+- Batch move selected objects to a common parent
+- Clean up workspace by moving objects to storage
+- Transfer multiple scripts between services
+- Organize objects by category or type
+- Implement bulk organizational changes
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to move (e.g., ["game.Workspace.Part1", "game.Workspace.Part2"])
+</ParamField>
+
+<ParamField path="newParent" type="string" required>
+  Path to the new parent instance where all objects should be moved
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the operation succeeded
+</ResponseField>
+
+<ResponseField name="movedCount" type="number">
+  Number of instances successfully moved
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of individual move results
+</ResponseField>
+
+<ResponseField name="results[].path" type="string">
+  Original path of the moved instance
+</ResponseField>
+
+<ResponseField name="results[].newPath" type="string">
+  New path after moving
+</ResponseField>
+
+<ResponseField name="results[].success" type="boolean">
+  Whether this specific instance was moved successfully
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "movedCount": 3,
+  "results": [
+    {
+      "path": "game.Workspace.Platform_1",
+      "newPath": "game.Workspace.Levels.Level_01.Platform_1",
+      "success": true
+    },
+    {
+      "path": "game.Workspace.Platform_2",
+      "newPath": "game.Workspace.Levels.Level_01.Platform_2",
+      "success": true
+    },
+    {
+      "path": "game.Workspace.Platform_3",
+      "newPath": "game.Workspace.Levels.Level_01.Platform_3",
+      "success": true
+    }
+  ]
+}
+```
+
+## Usage Examples
+
+### Move Selected Objects
+
+```javascript
+// Move all selected objects to a folder
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length === 0) {
+  console.log('No objects selected');
+} else {
+  const paths = selection.selection.map(obj => obj.path);
+  
+  const result = await mcpClient.callTool('mass_reparent', {
+    paths: paths,
+    newParent: 'game.Workspace.OrganizedItems'
+  });
+  
+  console.log(`Moved ${result.movedCount} objects`);
+}
+```
+
+### Organize Platforms by Level
+
+```javascript
+// Move all Level_01 platforms to a Level_01 folder
+const platforms = await mcpClient.callTool('search_objects', {
+  query: 'Level_01',
+  searchType: 'name'
+});
+
+const paths = platforms.results.map(p => p.path);
+
+const result = await mcpClient.callTool('mass_reparent', {
+  paths: paths,
+  newParent: 'game.Workspace.Obby.Level_01'
+});
+
+console.log(`Organized ${result.movedCount} platforms into Level_01`);
+```
+
+### Move Objects by Class Type
+
+```javascript
+// Move all parts to a "Parts" folder
+const parts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part',
+  maxDepth: 2
+});
+
+const paths = parts.descendants.map(p => p.path);
+
+await mcpClient.callTool('mass_reparent', {
+  paths: paths,
+  newParent: 'game.Workspace.Parts'
+});
+
+console.log('All parts organized');
+```
+
+### Move Objects Matching Criteria
+
+```javascript
+// Move all red parts to a RedParts folder
+const allParts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+});
+
+// Filter for red parts
+const redParts = [];
+for (const part of allParts.descendants) {
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: part.path
+  });
+  
+  if (props.BrickColor === 'Really red') {
+    redParts.push(part.path);
+  }
+}
+
+// Move all red parts at once
+if (redParts.length > 0) {
+  await mcpClient.callTool('mass_reparent', {
+    paths: redParts,
+    newParent: 'game.Workspace.RedParts'
+  });
+  
+  console.log(`Moved ${redParts.length} red parts`);
+}
+```
+
+### Batch Level Organization
+
+```javascript
+// Organize entire obby by level
+for (let level = 1; level <= 20; level++) {
+  const levelStr = level.toString().padStart(2, '0');
+  
+  // Create level folder
+  await mcpClient.callTool('create_object', {
+    className: 'Folder',
+    parent: 'game.Workspace.Obby',
+    name: `Level_${levelStr}`
+  });
+  
+  // Find all objects for this level
+  const objects = await mcpClient.callTool('search_objects', {
+    query: `Level_${levelStr}`,
+    searchType: 'name'
+  });
+  
+  // Move all objects for this level at once
+  if (objects.results.length > 0) {
+    const paths = objects.results.map(obj => obj.path);
+    
+    await mcpClient.callTool('mass_reparent', {
+      paths: paths,
+      newParent: `game.Workspace.Obby.Level_${levelStr}`
+    });
+    
+    console.log(`Level ${level}: moved ${paths.length} objects`);
+  }
+}
+```
+
+### Move Scripts to Appropriate Service
+
+```javascript
+// Move all server scripts to ServerScriptService
+const scripts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Script'
+});
+
+if (scripts.descendants.length > 0) {
+  const paths = scripts.descendants.map(s => s.path);
+  
+  const result = await mcpClient.callTool('mass_reparent', {
+    paths: paths,
+    newParent: 'game.ServerScriptService'
+  });
+  
+  console.log(`Moved ${result.movedCount} scripts to ServerScriptService`);
+}
+```
+
+### Clean Up Workspace
+
+```javascript
+// Move all objects with "Old" in the name to ServerStorage
+const oldObjects = await mcpClient.callTool('search_objects', {
+  query: 'Old',
+  searchType: 'name'
+});
+
+if (oldObjects.results.length > 0) {
+  const paths = oldObjects.results.map(obj => obj.path);
+  
+  await mcpClient.callTool('mass_reparent', {
+    paths: paths,
+    newParent: 'game.ServerStorage.Archive'
+  });
+  
+  console.log(`Archived ${paths.length} old objects`);
+}
+```
+
+## Tips and Best Practices
+
+<Tip>
+  `mass_reparent` is significantly faster than multiple `reparent_object` calls. Use it whenever moving more than 2-3 objects to the same parent.
+</Tip>
+
+<Info>
+  All instances must move to the same parent. If you need to move objects to different parents, use multiple `mass_reparent` calls or `batch_operations`.
+</Info>
+
+<Warning>
+  If any path in the array is invalid, that specific move will fail, but the operation will continue for other paths. Check the `results` array for individual success states.
+</Warning>
+
+<Tip>
+  Combine with `get_descendants` or `search_objects` to efficiently move filtered sets of objects.
+</Tip>
+
+## Performance Comparison
+
+### Inefficient (Multiple Calls)
+
+```javascript
+// ❌ Slow: 10 round-trips for 10 objects
+for (const path of paths) {
+  await mcpClient.callTool('reparent_object', {
+    instancePath: path,
+    newParent: 'game.Workspace.Folder'
+  });
+}
+```
+
+### Efficient (Single Call)
+
+```javascript
+// ✅ Fast: 1 round-trip for 10 objects
+await mcpClient.callTool('mass_reparent', {
+  paths: paths,
+  newParent: 'game.Workspace.Folder'
+});
+```
+
+## Behavior Details
+
+### Error Handling
+
+- If a path doesn't exist, that move fails but others continue
+- If the parent doesn't exist, the entire operation fails
+- Individual failures are reported in the `results` array
+- `movedCount` reflects successfully moved instances
+
+### Order Preservation
+
+- Objects are moved in the order they appear in the `paths` array
+- The order in the parent reflects the order of the operation
+
+### Hierarchy Preservation
+
+- Each moved instance brings its entire hierarchy (all descendants)
+- Parent-child relationships within the moved set are preserved
+- If you move both a parent and its child, both are moved (may cause duplication in some cases)
+
+## Common Issues
+
+**Issue: Some objects didn't move**
+- Check the `results` array for individual success/failure status
+- Verify all paths in the array are valid and exist
+- Ensure the target parent exists before calling mass_reparent
+
+**Issue: Objects moved but are in unexpected order**
+- Objects are moved in array order
+- If order matters, ensure paths array is ordered correctly
+- Parent's ChildOrder property may also affect visual order
+
+**Issue: Performance is still slow**
+- Ensure you're using mass_reparent, not looping reparent_object
+- Consider batch_operations for mixed operation types
+- Check if individual property checks are creating bottlenecks
+
+**Issue: Moving both parent and child causes issues**
+- If you move a parent and its child separately, the child may be moved twice
+- Filter out children whose parents are also being moved
+- Or move only the top-level parents (children move automatically)
+
+## Related Tools
+
+- [`reparent_object`](/api/object-management/reparent-object) - Move a single instance
+- [`group_objects`](/api/object-management/group-objects) - Create a container and move objects into it
+- [`batch_operations`](/api/advanced/batch-operations) - Mix reparenting with other operations
+- [`get_descendants`](/api/instance-property/get-descendants) - Find objects to reparent
+- [`search_objects`](/api/studio-context/search-objects) - Find objects by criteria for reparenting

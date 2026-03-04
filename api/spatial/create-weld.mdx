@@ -1,0 +1,377 @@
+---
+title: create_weld
+description: Create a WeldConstraint between two BaseParts to permanently connect them
+---
+
+## Overview
+
+The `create_weld` tool creates a WeldConstraint between two BaseParts, rigidly connecting them together so they move as one unit. This is essential for creating complex assemblies, attaching parts permanently, and ensuring objects stay together.
+
+## Use Cases
+
+- Permanently attach parts in a model
+- Create complex assemblies that move together
+- Attach accessories or decorations to base parts
+- Connect platforms to support structures
+- Build vehicles or mechanisms with multiple parts
+- Ensure parts don't separate during physics simulation
+- Create rigid connections for anchored structures
+
+## Parameters
+
+<ParamField path="part0Path" type="string" required>
+  Path to the first BasePart to weld
+</ParamField>
+
+<ParamField path="part1Path" type="string" required>
+  Path to the second BasePart to weld
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the weld was created successfully
+</ResponseField>
+
+<ResponseField name="weldPath" type="string">
+  Path to the created WeldConstraint instance
+</ResponseField>
+
+<ResponseField name="part0" type="string">
+  Path to Part0 of the weld
+</ResponseField>
+
+<ResponseField name="part1" type="string">
+  Path to Part1 of the weld
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "weldPath": "game.Workspace.Part1.WeldConstraint",
+  "part0": "game.Workspace.Part1",
+  "part1": "game.Workspace.Part2"
+}
+```
+
+## Usage Examples
+
+### Basic Weld
+
+```json
+{
+  "part0Path": "game.Workspace.Base",
+  "part1Path": "game.Workspace.Attachment"
+}
+```
+
+Creates a weld between Base and Attachment, connecting them rigidly.
+
+### Weld Selected Parts
+
+```javascript
+// Weld all selected parts to the first selected part
+const selection = await mcpClient.callTool('get_selection', {});
+
+if (selection.selection.length < 2) {
+  console.log('Select at least 2 parts to weld');
+} else {
+  const basePart = selection.selection[0].path;
+  
+  for (let i = 1; i < selection.selection.length; i++) {
+    const result = await mcpClient.callTool('create_weld', {
+      part0Path: basePart,
+      part1Path: selection.selection[i].path
+    });
+    
+    console.log(`Welded ${selection.selection[i].name} to ${selection.selection[0].name}`);
+  }
+  
+  console.log(`Created ${selection.selection.length - 1} welds`);
+}
+```
+
+### Weld Model Parts Together
+
+```javascript
+// Weld all parts in a model to its PrimaryPart
+const modelPath = 'game.Workspace.ComplexModel';
+const modelProps = await mcpClient.callTool('get_instance_properties', {
+  instancePath: modelPath
+});
+
+const primaryPart = modelProps.PrimaryPart;
+
+if (!primaryPart) {
+  console.log('Model has no PrimaryPart');
+} else {
+  const descendants = await mcpClient.callTool('get_descendants', {
+    instancePath: modelPath,
+    classFilter: 'Part'
+  });
+  
+  for (const part of descendants.descendants) {
+    if (part.path !== primaryPart) {
+      await mcpClient.callTool('create_weld', {
+        part0Path: primaryPart,
+        part1Path: part.path
+      });
+    }
+  }
+  
+  console.log('All parts welded to PrimaryPart');
+}
+```
+
+### Create Chain of Welds
+
+```javascript
+// Weld parts in sequence (Part1 to Part2, Part2 to Part3, etc.)
+const parts = [
+  'game.Workspace.Segment_1',
+  'game.Workspace.Segment_2',
+  'game.Workspace.Segment_3',
+  'game.Workspace.Segment_4'
+];
+
+for (let i = 0; i < parts.length - 1; i++) {
+  await mcpClient.callTool('create_weld', {
+    part0Path: parts[i],
+    part1Path: parts[i + 1]
+  });
+  
+  console.log(`Welded Segment_${i + 1} to Segment_${i + 2}`);
+}
+
+console.log('Chain welded');
+```
+
+### Attach Decoration to Base
+
+```javascript
+// Attach decorative elements to a base platform
+const basePath = 'game.Workspace.Platform';
+const decorations = await mcpClient.callTool('search_objects', {
+  query: 'Decoration',
+  searchType: 'name'
+});
+
+for (const decoration of decorations.results) {
+  if (decoration.className === 'Part' || decoration.className === 'MeshPart') {
+    await mcpClient.callTool('create_weld', {
+      part0Path: basePath,
+      part1Path: decoration.path
+    });
+    
+    console.log(`Attached ${decoration.name}`);
+  }
+}
+
+console.log('All decorations attached');
+```
+
+### Weld After Positioning
+
+```javascript
+// Position a part, then weld it in place
+const attachment = 'game.Workspace.Attachment';
+const base = 'game.Workspace.Base';
+
+// Position the attachment
+await mcpClient.callTool('set_property', {
+  instancePath: attachment,
+  propertyName: 'Position',
+  propertyValue: { X: 10, Y: 15, Z: 5 }
+});
+
+// Weld it to lock position
+await mcpClient.callTool('create_weld', {
+  part0Path: base,
+  part1Path: attachment
+});
+
+console.log('Part positioned and welded');
+```
+
+### Build Assembly
+
+```javascript
+// Create and weld a multi-part assembly
+const parts = [];
+
+// Create parts
+for (let i = 0; i < 5; i++) {
+  const part = await mcpClient.callTool('create_object_with_properties', {
+    className: 'Part',
+    parent: 'game.Workspace',
+    name: `AssemblyPart_${i}`,
+    properties: {
+      Size: { X: 4, Y: 1, Z: 4 },
+      Position: { X: 0, Y: i * 2, Z: 0 },
+      Anchored: false
+    }
+  });
+  
+  parts.push(part.path);
+}
+
+// Weld parts together
+for (let i = 1; i < parts.length; i++) {
+  await mcpClient.callTool('create_weld', {
+    part0Path: parts[0],
+    part1Path: parts[i]
+  });
+}
+
+// Anchor the base part
+await mcpClient.callTool('set_property', {
+  instancePath: parts[0],
+  propertyName: 'Anchored',
+  propertyValue: true
+});
+
+console.log('Assembly created and welded');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Weld parts while they're in the desired relative positions. The WeldConstraint maintains the offset between parts at the time of weld creation.
+</Tip>
+
+<Info>
+  Both parts must be BaseParts (Part, MeshPart, etc.). You cannot weld non-physical instances like Scripts or Folders.
+</Info>
+
+<Warning>
+  If both parts are Anchored, the weld has no effect. Anchor only one part (typically Part0) or neither.
+</Warning>
+
+<Tip>
+  For complex models, weld all parts to a single PrimaryPart. This creates a star topology that's efficient and easy to manage.
+</Tip>
+
+## WeldConstraint Behavior
+
+### How Welds Work
+
+- WeldConstraint rigidly connects Part0 and Part1
+- Parts maintain their relative position and orientation
+- When one part moves, the other moves with it
+- Welds work with both anchored and unanchored parts
+
+### Part0 vs Part1
+
+- Part0 is the "base" part
+- Part1 is the "attached" part
+- If Part0 is anchored, the entire welded assembly is anchored
+- If Part0 moves, Part1 moves to maintain relative position
+
+### Anchoring Behavior
+
+- **Both Anchored:** Weld has no effect (parts can't move)
+- **Part0 Anchored, Part1 Unanchored:** Part1 is held in place relative to Part0
+- **Both Unanchored:** Parts move together as one physics object
+- **Part0 Unanchored, Part1 Anchored:** Part0 is held relative to Part1
+
+### Welded Physics
+
+- Welded unanchored parts share physics properties
+- Total mass is sum of all welded parts
+- Center of mass is calculated from all welded parts
+- Breaking welds require scripting (Lua) to detect forces
+
+## Common Patterns
+
+### Star Topology (Recommended)
+
+```javascript
+// Weld all parts to one central part
+const center = 'game.Workspace.Center';
+const parts = ['Part1', 'Part2', 'Part3', 'Part4'];
+
+for (const part of parts) {
+  await mcpClient.callTool('create_weld', {
+    part0Path: center,
+    part1Path: `game.Workspace.${part}`
+  });
+}
+```
+
+### Hierarchical Welding
+
+```javascript
+// Weld in hierarchy: A to B, B to C, C to D
+const hierarchy = ['A', 'B', 'C', 'D'];
+
+for (let i = 0; i < hierarchy.length - 1; i++) {
+  await mcpClient.callTool('create_weld', {
+    part0Path: `game.Workspace.${hierarchy[i]}`,
+    part1Path: `game.Workspace.${hierarchy[i + 1]}`
+  });
+}
+```
+
+### Conditional Welding
+
+```javascript
+// Only weld parts that are touching
+const baseBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Base'
+});
+
+const allParts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+});
+
+for (const part of allParts.descendants) {
+  const partBounds = await mcpClient.callTool('get_bounding_box', {
+    instancePath: part.path
+  });
+  
+  // Simple proximity check
+  const distance = Math.abs(partBounds.cframe.Position.Y - baseBounds.max.Y);
+  
+  if (distance < 1) { // Within 1 stud
+    await mcpClient.callTool('create_weld', {
+      part0Path: 'game.Workspace.Base',
+      part1Path: part.path
+    });
+    
+    console.log(`Welded ${part.name} (touching base)`);
+  }
+}
+```
+
+## Common Issues
+
+**Issue: Parts separate after welding**
+- Verify both parts are BaseParts (not Models, Folders, etc.)
+- Check that the weld was actually created (verify weldPath in response)
+- Ensure neither part is being moved by scripts after welding
+- Verify the WeldConstraint still exists (hasn't been deleted)
+
+**Issue: Welded parts don't move together**
+- Both parts may be anchored (anchor only Part0)
+- Parts may be in different physics simulation spaces
+- Weld may have been broken by excessive force (requires scripting to detect)
+
+**Issue: Can't weld to Model**
+- Models are not BaseParts - weld to the Model's PrimaryPart instead
+- Or get the Model's parts and weld them individually
+
+**Issue: Assembly falls apart**
+- Welds may not connect all parts (check topology)
+- Use star topology with all parts welded to one center part
+- Ensure at least one part is anchored if assembly should be static
+
+## Related Tools
+
+- [`get_descendants`](/api/instance-property/get-descendants) - Find parts to weld
+- [`get_selection`](/api/studio-context/get-selection) - Get selected parts for welding
+- [`get_bounding_box`](/api/spatial/get-bounding-box) - Check part positions before welding
+- [`set_property`](/api/property-modification/set-property) - Position parts before welding
+- [`group_objects`](/api/object-management/group-objects) - Organize welded parts into a Model

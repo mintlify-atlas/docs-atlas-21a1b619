@@ -1,0 +1,335 @@
+---
+title: undo
+description: Undo the last action in Roblox Studio using ChangeHistoryService
+---
+
+## Overview
+
+The `undo` tool reverts the last recorded action in Roblox Studio's change history. This is equivalent to pressing Ctrl+Z in Studio and allows AI assistants to undo mistakes or unwanted changes programmatically.
+
+## Use Cases
+
+- Revert accidental changes or mistakes
+- Step back through experimental modifications
+- Implement trial-and-error workflows
+- Undo automated operations that had unexpected results
+- Allow users to revert AI-generated changes
+- Test changes and easily roll back
+- Provide "undo last action" functionality in tools
+
+## Parameters
+
+This tool takes no parameters.
+
+```json
+{}
+```
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the undo operation succeeded
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Description of the result (e.g., "Undo successful" or "Nothing to undo")
+</ResponseField>
+
+### Example Response (Success)
+
+```json
+{
+  "success": true,
+  "message": "Undo successful"
+}
+```
+
+### Example Response (Nothing to Undo)
+
+```json
+{
+  "success": false,
+  "message": "Nothing to undo"
+}
+```
+
+## Usage Examples
+
+### Basic Undo
+
+```javascript
+// Undo the last action
+const result = await mcpClient.callTool('undo', {});
+
+if (result.success) {
+  console.log('Last action undone');
+} else {
+  console.log('Nothing to undo');
+}
+```
+
+### Undo After Mistake
+
+```javascript
+// Try an operation, undo if it fails
+try {
+  await mcpClient.callTool('set_property', {
+    instancePath: 'game.Workspace.Part',
+    propertyName: 'Size',
+    propertyValue: { X: 10, Y: 10, Z: 10 }
+  });
+  
+  // Check if the change looks good
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: 'game.Workspace.Part'
+  });
+  
+  if (props.Size.X > 100) {
+    console.log('Size too large, undoing...');
+    await mcpClient.callTool('undo', {});
+  }
+} catch (error) {
+  console.log('Operation failed, undoing...');
+  await mcpClient.callTool('undo', {});
+}
+```
+
+### Multiple Undos
+
+```javascript
+// Undo the last 3 actions
+for (let i = 0; i < 3; i++) {
+  const result = await mcpClient.callTool('undo', {});
+  
+  if (result.success) {
+    console.log(`Undone action ${i + 1}`);
+  } else {
+    console.log('No more actions to undo');
+    break;
+  }
+}
+```
+
+### Experimental Workflow
+
+```javascript
+// Try something, ask user if they like it, undo if not
+await mcpClient.callTool('mass_set_property', {
+  paths: platformPaths,
+  propertyName: 'BrickColor',
+  propertyValue: 'Really red'
+});
+
+console.log('All platforms are now red.');
+const keepChanges = await askUser('Keep these changes? (yes/no)');
+
+if (keepChanges === 'no') {
+  await mcpClient.callTool('undo', {});
+  console.log('Changes reverted');
+}
+```
+
+### Trial and Error
+
+```javascript
+// Try different values until one works
+const testValues = [10, 20, 30, 40, 50];
+
+for (const value of testValues) {
+  // Try this value
+  await mcpClient.callTool('set_property', {
+    instancePath: 'game.Workspace.Part',
+    propertyName: 'Size',
+    propertyValue: { X: value, Y: 1, Z: 4 }
+  });
+  
+  // Test if it works
+  const isValid = await validateSize(value);
+  
+  if (isValid) {
+    console.log(`Found valid size: ${value}`);
+    break;
+  } else {
+    // Undo and try next value
+    await mcpClient.callTool('undo', {});
+  }
+}
+```
+
+### Undo Batch Operations
+
+```javascript
+// Perform batch operation with undo safety
+const initialState = await captureState();
+
+try {
+  // Perform complex operation
+  await mcpClient.callTool('mass_set_property', {
+    paths: manyPaths,
+    propertyName: 'Transparency',
+    propertyValue: 0.5
+  });
+  
+  // Validate results
+  const validationPassed = await validateChanges();
+  
+  if (!validationPassed) {
+    console.log('Validation failed, undoing...');
+    await mcpClient.callTool('undo', {});
+  }
+} catch (error) {
+  console.error('Operation failed:', error);
+  await mcpClient.callTool('undo', {});
+}
+```
+
+### Interactive Undo
+
+```javascript
+// Let user undo recent actions
+console.log('Recent actions:');
+console.log('1. Created 10 platforms');
+console.log('2. Changed colors to red');
+console.log('3. Moved platforms');
+
+const undoCount = await askUser('How many actions to undo?');
+
+for (let i = 0; i < undoCount; i++) {
+  const result = await mcpClient.callTool('undo', {});
+  if (!result.success) {
+    console.log(`Undone ${i} actions (no more history)`);
+    break;
+  }
+}
+
+console.log('Undo complete');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Not all operations are recorded in change history. Script changes via ScriptEditorService are recorded, but some API operations may not be.
+</Tip>
+
+<Info>
+  Studio's undo history has a limit. Very old actions may no longer be available to undo.
+</Info>
+
+<Warning>
+  Calling `undo` multiple times will step back through history. Be careful not to undo more than intended.
+</Warning>
+
+<Tip>
+  Combine undo with user confirmation dialogs for safe experimentation. Make changes, show the result, then undo if the user doesn't approve.
+</Tip>
+
+## Behavior Details
+
+### What Can Be Undone
+
+- Property changes (set_property, mass_set_property)
+- Object creation (create_object, etc.)
+- Object deletion (delete_object)
+- Object reparenting (reparent_object, mass_reparent)
+- Script source changes (set_script_source, edit_script_lines)
+- Grouping/ungrouping operations
+- Most operations that modify the game state
+
+### What Cannot Be Undone
+
+- Reading operations (get_property, get_script_source) - nothing to undo
+- Some internal API calls that don't record history
+- Changes made directly in Studio (outside MCP)
+- Plugin-specific operations that don't use ChangeHistoryService
+
+### History Stack
+
+- Undo removes the most recent action from history
+- After undo, that action can be redone with `redo`
+- Performing a new action after undo clears the redo stack
+- History has a maximum depth (varies by Studio)
+
+### Undo Waypoints
+
+- Studio records changes as "waypoints" in history
+- Some operations may create multiple waypoints
+- Undo reverts to the previous waypoint
+
+## Common Patterns
+
+### Try-Catch-Undo
+
+```javascript
+try {
+  await performRiskyOperation();
+} catch (error) {
+  await mcpClient.callTool('undo', {});
+  throw error;
+}
+```
+
+### Validate-Then-Undo
+
+```javascript
+await makeChange();
+const isValid = await validate();
+
+if (!isValid) {
+  await mcpClient.callTool('undo', {});
+}
+```
+
+### User-Controlled Undo
+
+```javascript
+const actions = [];
+
+for (const action of actions) {
+  await performAction(action);
+  
+  const keepIt = await askUser('Keep this change?');
+  if (!keepIt) {
+    await mcpClient.callTool('undo', {});
+  }
+}
+```
+
+### Undo Until Condition
+
+```javascript
+while (await someConditionIsMet()) {
+  const result = await mcpClient.callTool('undo', {});
+  
+  if (!result.success) {
+    break; // No more history
+  }
+}
+```
+
+## Common Issues
+
+**Issue: Undo doesn't seem to work**
+- The operation may not have been recorded in change history
+- Some API calls don't create undo waypoints
+- Verify that there is actually history to undo (check response message)
+
+**Issue: Undo undoes too much**
+- Some operations create multiple waypoints
+- Use redo to step forward if you undo too far
+- Consider saving state before operations instead of relying on undo
+
+**Issue: Nothing to undo message**
+- There is no recorded history to undo
+- All history may have been exhausted
+- The history stack may have been cleared
+
+**Issue: Undo doesn't work for specific operations**
+- Not all operations are recorded in ChangeHistoryService
+- Direct Lua operations may not create waypoints
+- Some plugin-specific operations don't integrate with Studio undo
+
+## Related Tools
+
+- [`redo`](/api/history/redo) - Redo the last undone action
+- [`batch_operations`](/api/advanced/batch-operations) - Group operations for atomic undo
+- [`execute_lua`](/api/advanced/execute-lua) - Execute operations with custom undo logic

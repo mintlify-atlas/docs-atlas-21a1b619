@@ -1,0 +1,335 @@
+---
+title: clear_terrain
+description: Remove terrain in a specified region
+---
+
+## Overview
+
+The `clear_terrain` tool removes all terrain within a specified rectangular region. This is useful for clearing space, removing unwanted terrain, sculpting terrain features, or resetting terrain areas.
+
+## Use Cases
+
+- Clear space for building
+- Remove unwanted terrain sections
+- Sculpt terrain by selectively clearing areas
+- Create caves or tunnels
+- Reset terrain to start fresh
+- Remove terrain under parts or structures
+- Create clearings in terrain
+- Prepare areas for new terrain generation
+
+## Parameters
+
+<ParamField path="center" type="object" required>
+  Center point of the region to clear as Vector3 {X, Y, Z}
+</ParamField>
+
+<ParamField path="size" type="object" required>
+  Size of the region to clear as Vector3 {X, Y, Z}
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the terrain clear operation succeeded
+</ResponseField>
+
+<ResponseField name="center" type="object">
+  Center point of the cleared region
+</ResponseField>
+
+<ResponseField name="size" type="object">
+  Size of the cleared region
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "center": { "X": 0, "Y": 10, "Z": 0 },
+  "size": { "X": 50, "Y": 20, "Z": 50 }
+}
+```
+
+## Usage Examples
+
+### Clear Rectangular Area
+
+```json
+{
+  "center": { "X": 0, "Y": 10, "Z": 0 },
+  "size": { "X": 100, "Y": 20, "Z": 100 }
+}
+```
+
+Clears a 100x20x100 stud region centered at (0, 10, 0).
+
+### Clear Space for Building
+
+```javascript
+// Clear terrain under a build area
+const buildCenter = { X: 50, Y: 5, Z: 50 };
+const buildSize = { X: 80, Y: 30, Z: 80 };
+
+await mcpClient.callTool('clear_terrain', {
+  center: buildCenter,
+  size: buildSize
+});
+
+console.log('Build area cleared');
+```
+
+### Clear Terrain Under Platform
+
+```javascript
+// Remove terrain that may be blocking a platform
+const platformBounds = await mcpClient.callTool('get_bounding_box', {
+  instancePath: 'game.Workspace.Platform'
+});
+
+await mcpClient.callTool('clear_terrain', {
+  center: platformBounds.cframe.Position,
+  size: {
+    X: platformBounds.size.X + 10,
+    Y: platformBounds.size.Y + 10,
+    Z: platformBounds.size.Z + 10
+  }
+});
+
+console.log('Terrain cleared around platform');
+```
+
+### Create Cave Opening
+
+```javascript
+// Clear a spherical-ish cave entrance
+const caveCenter = { X: 100, Y: 15, Z: 100 };
+
+await mcpClient.callTool('clear_terrain', {
+  center: caveCenter,
+  size: { X: 20, Y: 15, Z: 20 }
+});
+
+console.log('Cave entrance created');
+```
+
+### Clear Path Through Terrain
+
+```javascript
+// Create a cleared path from point A to point B
+const pathStart = { X: 0, Y: 5, Z: 0 };
+const pathEnd = { X: 100, Y: 5, Z: 100 };
+const pathWidth = 15;
+
+const segments = 10;
+for (let i = 0; i <= segments; i++) {
+  const t = i / segments;
+  const center = {
+    X: pathStart.X + (pathEnd.X - pathStart.X) * t,
+    Y: pathStart.Y + (pathEnd.Y - pathStart.Y) * t,
+    Z: pathStart.Z + (pathEnd.Z - pathStart.Z) * t
+  };
+  
+  await mcpClient.callTool('clear_terrain', {
+    center: center,
+    size: { X: pathWidth, Y: 20, Z: pathWidth }
+  });
+}
+
+console.log('Path cleared through terrain');
+```
+
+### Reset Entire Terrain
+
+```javascript
+// Clear all terrain in a large area
+await mcpClient.callTool('clear_terrain', {
+  center: { X: 0, Y: 0, Z: 0 },
+  size: { X: 2000, Y: 500, Z: 2000 }
+});
+
+console.log('Terrain reset');
+```
+
+### Clear Terrain Grid
+
+```javascript
+// Clear terrain in a grid pattern (checkerboard)
+const gridSize = 50;
+const spacing = 100;
+
+for (let x = -200; x <= 200; x += spacing) {
+  for (let z = -200; z <= 200; z += spacing) {
+    // Only clear every other square (checkerboard)
+    if ((x / spacing + z / spacing) % 2 === 0) {
+      await mcpClient.callTool('clear_terrain', {
+        center: { X: x, Y: 10, Z: z },
+        size: { X: gridSize, Y: 30, Z: gridSize }
+      });
+    }
+  }
+}
+
+console.log('Checkerboard pattern created');
+```
+
+### Clear Water Area
+
+```javascript
+// Remove water terrain to create dry land
+await mcpClient.callTool('clear_terrain', {
+  center: { X: 0, Y: -5, Z: 0 },
+  size: { X: 80, Y: 10, Z: 80 }
+});
+
+console.log('Water cleared');
+```
+
+### Clear and Replace Terrain
+
+```javascript
+// Clear old terrain and replace with new
+const region = {
+  center: { X: 0, Y: 5, Z: 0 },
+  size: { X: 100, Y: 20, Z: 100 }
+};
+
+// Clear existing terrain
+await mcpClient.callTool('clear_terrain', region);
+
+// Fill with new material
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  center: region.center,
+  size: region.size,
+  material: 'Grass'
+});
+
+console.log('Terrain replaced');
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Always clear terrain before filling the same region with new terrain to avoid unexpected layering.
+</Tip>
+
+<Info>
+  The clear operation removes ALL terrain materials in the specified region, regardless of material type.
+</Info>
+
+<Warning>
+  Clearing very large regions may take time and impact performance. Consider breaking large clears into smaller chunks.
+</Warning>
+
+<Tip>
+  Use clear_terrain to "sculpt" by selectively removing terrain sections. Combine with fill_terrain for complex terrain shaping.
+</Tip>
+
+## Behavior Details
+
+### Region Shape
+
+- Always clears a rectangular box region
+- Aligned with world axes (no rotation)
+- Size is the exact dimensions of the box
+
+### What Gets Cleared
+
+- All terrain voxels in the region
+- All terrain materials (Grass, Water, Rock, etc.)
+- Only terrain is affected - parts and other objects are not touched
+
+### Partial Clearing
+
+- Terrain at the edges may be partially cleared
+- Roblox terrain uses voxel resolution (4 studs per voxel)
+- Clearing may affect slightly more area than specified
+
+## Common Patterns
+
+### Clear Before Fill Pattern
+
+```javascript
+// Always clear before filling for clean results
+const region = { center: { X: 0, Y: 0, Z: 0 }, size: { X: 100, Y: 20, Z: 100 } };
+
+await mcpClient.callTool('clear_terrain', region);
+await mcpClient.callTool('fill_terrain', {
+  shape: 'Block',
+  ...region,
+  material: 'Grass'
+});
+```
+
+### Progressive Clearing
+
+```javascript
+// Clear terrain in chunks for better performance
+const totalSize = 1000;
+const chunkSize = 100;
+
+for (let x = -totalSize/2; x < totalSize/2; x += chunkSize) {
+  for (let z = -totalSize/2; z < totalSize/2; z += chunkSize) {
+    await mcpClient.callTool('clear_terrain', {
+      center: { X: x + chunkSize/2, Y: 0, Z: z + chunkSize/2 },
+      size: { X: chunkSize, Y: 100, Z: chunkSize }
+    });
+  }
+}
+```
+
+### Clear Around Objects
+
+```javascript
+// Clear terrain around all parts in a model
+const parts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.Structure',
+  classFilter: 'Part'
+});
+
+for (const part of parts.descendants) {
+  const bounds = await mcpClient.callTool('get_bounding_box', {
+    instancePath: part.path
+  });
+  
+  await mcpClient.callTool('clear_terrain', {
+    center: bounds.cframe.Position,
+    size: {
+      X: bounds.size.X + 5,
+      Y: bounds.size.Y + 5,
+      Z: bounds.size.Z + 5
+    }
+  });
+}
+```
+
+## Common Issues
+
+**Issue: Terrain not fully cleared**
+- Increase the size slightly to ensure full coverage
+- Terrain resolution is 4 studs per voxel (may need larger clear area)
+- Use get_bounding_box to calculate exact clear region
+
+**Issue: Clearing takes too long**
+- Break large clears into smaller chunks
+- Clear only the necessary area, not excess
+- Consider if clearing is necessary (parts can overlap terrain)
+
+**Issue: Parts disappear when clearing**
+- clear_terrain only affects terrain, not parts
+- If parts disappeared, they may have been deleted by another operation
+- Verify parts exist before clearing
+
+**Issue: Cleared area has rough edges**
+- Terrain voxel resolution causes blocky edges
+- Use multiple smaller clears for smoother edges
+- Or use fill_terrain with smooth shapes after clearing
+
+## Related Tools
+
+- [`fill_terrain`](/api/terrain/fill-terrain) - Fill cleared regions with new terrain
+- [`get_bounding_box`](/api/spatial/get-bounding-box) - Calculate clear region size and position
+- [`raycast`](/api/spatial/raycast) - Detect terrain before clearing
+- [`execute_lua`](/api/advanced/execute-lua) - Complex terrain sculpting with Lua

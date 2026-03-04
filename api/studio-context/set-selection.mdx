@@ -1,0 +1,391 @@
+---
+title: set_selection
+description: Set the current selection in Roblox Studio to specific instances
+---
+
+## Overview
+
+The `set_selection` tool programmatically sets which instances are selected in Roblox Studio's Explorer window. This allows AI assistants to highlight specific objects for the user, guiding their attention and enabling manual operations on programmatically identified objects.
+
+## Use Cases
+
+- Highlight objects for user review
+- Guide users to specific instances
+- Select objects before manual operations
+- Show results of search or filter operations
+- Direct user attention to problematic objects
+- Enable manual editing of AI-identified objects
+- Prepare selection for Studio operations (grouping, etc.)
+- Implement "show me" functionality
+
+## Parameters
+
+<ParamField path="paths" type="array" required>
+  Array of instance paths to select in Studio
+</ParamField>
+
+## Response Structure
+
+<ResponseField name="success" type="boolean">
+  Whether the selection was set successfully
+</ResponseField>
+
+<ResponseField name="selectedCount" type="number">
+  Number of instances successfully selected
+</ResponseField>
+
+<ResponseField name="selectedPaths" type="array">
+  Array of paths that were selected
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "selectedCount": 3,
+  "selectedPaths": [
+    "game.Workspace.Platform_1",
+    "game.Workspace.Platform_2",
+    "game.Workspace.Platform_3"
+  ]
+}
+```
+
+## Usage Examples
+
+### Select Single Object
+
+```json
+{
+  "paths": ["game.Workspace.ImportantPart"]
+}
+```
+
+Selects a single object in Studio.
+
+### Select Multiple Objects
+
+```javascript
+// Select all platforms in a level
+const platforms = await mcpClient.callTool('search_objects', {
+  query: 'Level_01',
+  searchType: 'name'
+});
+
+const paths = platforms.results.map(obj => obj.path);
+
+await mcpClient.callTool('set_selection', {
+  paths: paths
+});
+
+console.log(`Selected ${paths.length} platforms`);
+console.log('Please review the selected platforms in Studio.');
+```
+
+### Highlight Search Results
+
+```javascript
+// Find and select all red parts
+const allParts = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  classFilter: 'Part'
+});
+
+const redParts = [];
+for (const part of allParts.descendants) {
+  const props = await mcpClient.callTool('get_instance_properties', {
+    instancePath: part.path
+  });
+  
+  if (props.BrickColor === 'Really red') {
+    redParts.push(part.path);
+  }
+}
+
+await mcpClient.callTool('set_selection', {
+  paths: redParts
+});
+
+console.log(`Found and selected ${redParts.length} red parts`);
+```
+
+### Guide User to Errors
+
+```javascript
+// Find problematic objects and show them to user
+const problems = await findProblematicObjects();
+
+if (problems.length > 0) {
+  await mcpClient.callTool('set_selection', {
+    paths: problems.map(p => p.path)
+  });
+  
+  console.log(`Found ${problems.length} issues. Selected problematic objects in Studio.`);
+  console.log('Please review:');
+  problems.forEach(p => {
+    console.log(`  - ${p.name}: ${p.issue}`);
+  });
+} else {
+  console.log('No problems found!');
+}
+```
+
+### Interactive Object Selection
+
+```javascript
+// Let user choose category, then select those objects
+const category = await askUser('Select category (platforms/spawns/checkpoints):');
+
+const objects = await mcpClient.callTool('search_objects', {
+  query: category,
+  searchType: 'name'
+});
+
+await mcpClient.callTool('set_selection', {
+  paths: objects.results.map(obj => obj.path)
+});
+
+console.log(`Selected all ${category}`);
+```
+
+### Select for Manual Grouping
+
+```javascript
+// Select objects that should be grouped, let user group them
+const objectsToGroup = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace',
+  nameFilter: 'Level_01'
+});
+
+await mcpClient.callTool('set_selection', {
+  paths: objectsToGroup.descendants.map(obj => obj.path)
+});
+
+console.log('Selected objects for grouping.');
+console.log('Press Ctrl+G to group them in Studio.');
+```
+
+### Clear Selection
+
+```javascript
+// Clear selection by selecting nothing
+await mcpClient.callTool('set_selection', {
+  paths: []
+});
+
+console.log('Selection cleared');
+```
+
+### Step-by-Step Guidance
+
+```javascript
+// Guide user through a multi-step process
+console.log('Step 1: Review these platforms');
+await mcpClient.callTool('set_selection', {
+  paths: platformPaths
+});
+await waitForUserConfirmation();
+
+console.log('Step 2: Review these spawns');
+await mcpClient.callTool('set_selection', {
+  paths: spawnPaths
+});
+await waitForUserConfirmation();
+
+console.log('Step 3: Review these checkpoints');
+await mcpClient.callTool('set_selection', {
+  paths: checkpointPaths
+});
+
+console.log('Review complete!');
+```
+
+### Select Validation Failures
+
+```javascript
+// Validate objects and select those that failed
+const allPlatforms = await mcpClient.callTool('get_descendants', {
+  instancePath: 'game.Workspace.Obby',
+  nameFilter: 'Platform'
+});
+
+const invalid = [];
+
+for (const platform of allPlatforms.descendants) {
+  const bounds = await mcpClient.callTool('get_bounding_box', {
+    instancePath: platform.path
+  });
+  
+  if (bounds.size.Y < 1) {
+    invalid.push(platform.path);
+  }
+}
+
+if (invalid.length > 0) {
+  await mcpClient.callTool('set_selection', {
+    paths: invalid
+  });
+  
+  console.log(`WARNING: ${invalid.length} platforms are too thin!`);
+  console.log('Selected invalid platforms for your review.');
+}
+```
+
+### Select and Prompt for Action
+
+```javascript
+// Select objects and ask user what to do
+const oldObjects = await mcpClient.callTool('search_objects', {
+  query: 'Old',
+  searchType: 'name'
+});
+
+if (oldObjects.results.length > 0) {
+  await mcpClient.callTool('set_selection', {
+    paths: oldObjects.results.map(obj => obj.path)
+  });
+  
+  console.log(`Found ${oldObjects.results.length} objects with 'Old' in the name.`);
+  console.log('Selected in Studio for your review.');
+  
+  const action = await askUser('Delete these? (yes/no)');
+  
+  if (action === 'yes') {
+    for (const obj of oldObjects.results) {
+      await mcpClient.callTool('delete_object', {
+        instancePath: obj.path
+      });
+    }
+    console.log('Deleted old objects');
+  }
+}
+```
+
+## Tips and Best Practices
+
+<Tip>
+  Use set_selection to guide users to objects that need attention. This is more user-friendly than just listing paths.
+</Tip>
+
+<Info>
+  The selection will be visible in Studio's Explorer window. Selected objects will be highlighted.
+</Info>
+
+<Warning>
+  If any path in the array is invalid, that path will be skipped, but valid paths will still be selected.
+</Warning>
+
+<Tip>
+  Combine with console messages to explain WHY objects are selected. "Selected 5 platforms with invalid sizes" is more helpful than just silently selecting.
+</Tip>
+
+## Behavior Details
+
+### Selection Replacement
+
+- `set_selection` replaces the current selection entirely
+- Previously selected objects are deselected
+- To clear selection, pass an empty array
+
+### Invalid Paths
+
+- If a path doesn't exist, it's skipped
+- Valid paths are still selected
+- Response indicates how many were successfully selected
+
+### Studio Integration
+
+- Selected objects appear highlighted in Explorer
+- Selected objects can be operated on with Studio tools
+- Selection persists until changed by user or another call
+
+### Multi-Selection
+
+- All paths in the array are selected simultaneously
+- Equivalent to Ctrl+clicking multiple objects in Explorer
+- Objects can be in different parents or services
+
+## Common Patterns
+
+### Find-Select-Act
+
+```javascript
+// Find objects
+const found = await findObjects(criteria);
+
+// Select for user review
+await mcpClient.callTool('set_selection', {
+  paths: found.map(obj => obj.path)
+});
+
+// Ask user for action
+const action = await askUser('What to do with selected objects?');
+
+// Perform action
+await performAction(action, found);
+```
+
+### Validation and Highlight
+
+```javascript
+// Validate, select failures
+const failures = await validateObjects();
+
+if (failures.length > 0) {
+  await mcpClient.callTool('set_selection', { paths: failures });
+  console.log('Selected invalid objects for review');
+}
+```
+
+### Progressive Selection
+
+```javascript
+// Select objects one group at a time
+for (const group of objectGroups) {
+  await mcpClient.callTool('set_selection', {
+    paths: group.paths
+  });
+  
+  console.log(`Reviewing ${group.name}...`);
+  await waitForUserConfirmation();
+}
+```
+
+### Clear and Select
+
+```javascript
+// Ensure clean selection
+await mcpClient.callTool('set_selection', { paths: [] }); // Clear
+await mcpClient.callTool('set_selection', { paths: newPaths }); // Select
+```
+
+## Common Issues
+
+**Issue: Objects not appearing selected**
+- Verify paths are correct and objects exist
+- Check Studio Explorer window (selection may not be visible in viewport)
+- Ensure MCP bridge is connected
+
+**Issue: Selection includes unexpected objects**
+- set_selection selects ONLY the provided paths
+- Double-check the paths array
+- Verify search/filter logic that generated the paths
+
+**Issue: Selection cleared immediately**
+- User may have clicked elsewhere in Studio
+- Another MCP operation may have cleared selection
+- Selection is temporary and can be changed by user
+
+**Issue: Can't select certain objects**
+- Some system objects may not be selectable
+- Objects in certain services may be restricted
+- Verify the object exists and is not hidden
+
+## Related Tools
+
+- [`get_selection`](/api/studio-context/get-selection) - Get currently selected objects
+- [`search_objects`](/api/studio-context/search-objects) - Find objects to select
+- [`get_descendants`](/api/instance-property/get-descendants) - Find descendants to select
+- [`search_by_property`](/api/instance-property/search-by-property) - Find by properties to select
+- [`group_objects`](/api/object-management/group-objects) - Group selected objects
