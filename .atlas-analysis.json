@@ -1,0 +1,190 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Roblox Studio MCP",
+  "projectDescription": "MCP server enabling AI assistants to interact with Roblox Studio through 53+ specialized tools",
+  "theme": "aspen",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/communication-protocol",
+              "concepts/plugin-system"
+            ]
+          },
+          {
+            "group": "Plugin Setup",
+            "pages": [
+              "plugin/installation",
+              "plugin/configuration",
+              "plugin/troubleshooting"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/testing",
+              "development/plugin-development"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview"
+            ]
+          },
+          {
+            "group": "File System Tools",
+            "pages": [
+              "api/file-system/get-file-tree",
+              "api/file-system/search-files"
+            ]
+          },
+          {
+            "group": "Studio Context Tools",
+            "pages": [
+              "api/studio-context/get-place-info",
+              "api/studio-context/get-services",
+              "api/studio-context/search-objects",
+              "api/studio-context/get-selection"
+            ]
+          },
+          {
+            "group": "Instance & Property Tools",
+            "pages": [
+              "api/instance-property/get-instance-properties",
+              "api/instance-property/get-instance-children",
+              "api/instance-property/search-by-property",
+              "api/instance-property/get-class-info"
+            ]
+          },
+          {
+            "group": "Property Modification Tools",
+            "pages": [
+              "api/property-modification/set-property",
+              "api/property-modification/mass-set-property",
+              "api/property-modification/mass-get-property",
+              "api/property-modification/set-calculated-property",
+              "api/property-modification/set-relative-property"
+            ]
+          },
+          {
+            "group": "Object Creation Tools",
+            "pages": [
+              "api/object-creation/create-object",
+              "api/object-creation/create-object-with-properties",
+              "api/object-creation/mass-create-objects",
+              "api/object-creation/mass-create-objects-with-properties",
+              "api/object-creation/delete-object",
+              "api/object-creation/smart-duplicate",
+              "api/object-creation/mass-duplicate"
+            ]
+          },
+          {
+            "group": "Script Editing Tools",
+            "pages": [
+              "api/script-editing/get-script-source",
+              "api/script-editing/set-script-source",
+              "api/script-editing/edit-script-lines",
+              "api/script-editing/insert-script-lines",
+              "api/script-editing/delete-script-lines"
+            ]
+          },
+          {
+            "group": "Attribute Tools",
+            "pages": [
+              "api/attributes/get-attribute",
+              "api/attributes/set-attribute",
+              "api/attributes/get-attributes",
+              "api/attributes/delete-attribute"
+            ]
+          },
+          {
+            "group": "Tag Tools",
+            "pages": [
+              "api/tags/get-tags",
+              "api/tags/add-tag",
+              "api/tags/remove-tag",
+              "api/tags/get-tagged"
+            ]
+          },
+          {
+            "group": "Project Analysis Tools",
+            "pages": [
+              "api/project-analysis/get-project-structure"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "53+ specialized MCP tools for Roblox Studio integration",
+    "Long polling architecture for instant response (vs 500ms interval polling)",
+    "Mass operations support for bulk property editing and object creation",
+    "Comprehensive script editing with line-level precision",
+    "Attribute and tag manipulation via CollectionService",
+    "Smart duplication with naming patterns and property variations",
+    "Dual-mode operation: stdio MCP and HTTP API",
+    "Full test coverage with Jest unit tests and Lune E2E tests"
+  ],
+  "publicApiSurface": [
+    "get_file_tree",
+    "search_files",
+    "get_place_info",
+    "get_services",
+    "search_objects",
+    "get_selection",
+    "get_instance_properties",
+    "get_instance_children",
+    "search_by_property",
+    "get_class_info",
+    "set_property",
+    "mass_set_property",
+    "mass_get_property",
+    "set_calculated_property",
+    "set_relative_property",
+    "create_object",
+    "create_object_with_properties",
+    "mass_create_objects",
+    "mass_create_objects_with_properties",
+    "delete_object",
+    "smart_duplicate",
+    "mass_duplicate",
+    "get_script_source",
+    "set_script_source",
+    "edit_script_lines",
+    "insert_script_lines",
+    "delete_script_lines",
+    "get_attribute",
+    "set_attribute",
+    "get_attributes",
+    "delete_attribute",
+    "get_tags",
+    "add_tag",
+    "remove_tag",
+    "get_tagged",
+    "get_project_structure"
+  ]
+}
